@@ -1,0 +1,116 @@
+// Prisma schema for Coffee POS System
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client2"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// 1. Quản lý Bàn & Phòng
+model Table {
+  id            String   @id @default(uuid())
+  name          String // VD: "Bàn 1-Phòng thường"
+  area          String // "Phòng thường", "Phòng lạnh"...
+  occupied      Boolean  @default(false)
+  groupId       String? // Dùng khi gộp nhiều bàn lại với nhau
+  // Thông tin Đặt bàn trước (Reservation)
+  isReserved    Boolean  @default(false)
+  reservedName  String? // Tên khách đặt (VD: "Anh Hoàng")
+  reservedPhone String? // Số điện thoại khách
+  reservedTime  String? // Giờ hẹn (VD: "08:30" hoặc "2026-11-08T08:30")
+  reservedNote  String? // Ghi chú (VD: "Đi 4 người, bàn cạnh cửa sổ")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  orders        Order[]
+}
+
+// 2. Thực đơn Món Ăn / Đồ Uống
+model Product {
+  id          String       @id @default(uuid())
+  name        String
+  price       Float
+  category    String       @default("Khác") // "Cà Phê", "Trà Trái Cây", "Đá Xay", "Bánh Ngọt"
+  image       String?
+  recipe      String? // Công thức pha chế & ghi chú
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  orderItems  OrderItem[]
+  recipeItems RecipeItem[]
+}
+
+// 3. Đơn Hàng (Hóa Đơn Bán Hàng)
+model Order {
+  id            String      @id // Mã đơn chuẩn: DH-001-08112026
+  tableId       String?
+  table         Table?      @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  staffId       String?
+  staff         Staff?      @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  subTotal      Float
+  discount      Float       @default(0)
+  vat           Float       @default(0)
+  total         Float
+  paymentMethod String // "CASH", "VIETQR"
+  status        String      @default("COMPLETED") // PENDING, COMPLETED, CANCELLED
+  orderNote     String?
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+}
+
+// 4. Chi Tiết Từng Món Trong Đơn Hàng
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  qty       Int     @default(1)
+  price     Float
+  itemNote  String? // Ghi chú pha chế: "Ít đường, nhiều đá..."
+}
+
+// 5. Nhân Viên
+model Staff {
+  id          String     @id @default(uuid())
+  name        String
+  role        String // "Phục vụ", "Thu ngân", "Pha chế"
+  wagePerHour Float      @default(25000)
+  createdAt   DateTime   @default(now())
+  orders      Order[]
+  shiftLogs   ShiftLog[]
+}
+
+// 6. Quản Lý Ca Làm & Chấm Công
+model ShiftLog {
+  id        String   @id @default(uuid())
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now())
+  shiftType String // "Sáng", "Chiều", "Tối"
+  hours     Float    @default(4)
+  tips      Float    @default(0)
+}
+
+// 7. Quản Lý Kho & Nguyên Vật Liệu
+model Ingredient {
+  id          String       @id @default(uuid())
+  name        String // "Hạt Robusta", "Sữa đặc", "Syrup Đào"...
+  unit        String // "g", "ml", "hộp"
+  stockQty    Float        @default(0)
+  costPerUnit Float        @default(0)
+  recipeItems RecipeItem[]
+}
+
+// 8. Định Lượng Công Thức Pha Chế (Món ăn <-> Nguyên liệu)
+model RecipeItem {
+  id           String     @id @default(uuid())
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  amount       Float // Số lượng nguyên liệu dùng cho 1 ly
+}
