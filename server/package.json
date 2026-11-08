@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
+    "build": "prisma generate",
     "start": "node src/index.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
@@ -16,9 +17,7 @@
     "@supabase/supabase-js": "^2.119.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
-  },
-  "devDependencies": {
+    "express": "^4.21.2",
     "prisma": "^5.22.0"
   }
 }

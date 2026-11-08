@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+server/node_modules/
+DUANCF/node_modules/
+
+# Production builds
+dist/
+DUANCF/dist/
+
+# Environment files (bảo mật không đưa lên Git)
+.env
+.env.local
+server/.env
+DUANCF/.env
+
+# Logs & temp
+*.log
+.DS_Store
+Thumbs.db
