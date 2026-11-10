@@ -4,6 +4,7 @@ import ShiftManagement from './components/ShiftManagement';
 import Payroll from './components/Payroll';
 import RecipeManagement from './components/RecipeManagement';
 import OrderHistory from './components/OrderHistory';
+import TableHistory from './components/TableHistory';
 import { INITIAL_TABLES, INITIAL_MENU, INITIAL_STAFF } from './data/initialData';
 import { NotificationProvider, useNotification } from './components/CustomNotification';
 import {
@@ -83,10 +84,18 @@ function MainApp() {
     return () => clearInterval(timer);
   }, []);
 
-  // Tải danh sách menu từ localStorage nếu có, nếu chưa có sẽ lấy INITIAL_MENU
+  // Tải danh sách menu từ localStorage nếu có, nếu chưa có sẽ lấy INITIAL_MENU chuẩn
   const [menu, setMenu] = useState(() => {
-    const savedMenu = localStorage.getItem('POS_MENU_DATA');
-    return savedMenu ? JSON.parse(savedMenu) : INITIAL_MENU;
+    try {
+      const savedMenu = localStorage.getItem('POS_MENU_DATA');
+      if (savedMenu) {
+        const parsed = JSON.parse(savedMenu);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+    return INITIAL_MENU;
   });
 
   const [staffList] = useState(INITIAL_STAFF);
@@ -235,6 +244,12 @@ function MainApp() {
       label: 'Sơ Đồ Bàn & Order',
       icon: '🛒',
       desc: 'Bán hàng, gộp bàn & hóa đơn',
+    },
+    {
+      id: 'tableHistory',
+      label: 'Lịch Sử Bàn',
+      icon: '🕒',
+      desc: 'Bàn đã dùng & Bàn đặt trước',
     },
     {
       id: 'history',
@@ -454,6 +469,9 @@ function MainApp() {
                 orders={orders}
                 onCompleteOrder={handleCompleteOrder}
               />
+            )}
+            {activeTab === 'tableHistory' && (
+              <TableHistory />
             )}
             {activeTab === 'history' && (
               <OrderHistory orders={orders} />

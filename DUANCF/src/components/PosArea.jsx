@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNotification } from './CustomNotification';
 import {
   apiCreateTable,
@@ -36,6 +36,155 @@ export default function PosArea({
   useEffect(() => {
     localStorage.setItem('POS_NOTES_DATA', JSON.stringify(tableNotes));
   }, [tableNotes]);
+
+  // Danh sách các gợi ý ghi chú thông minh (Tự động lưu và nhớ vĩnh viễn)
+  const DEFAULT_NOTE_SUGGESTIONS = [
+    'Ít đường',
+    'Không đường',
+    'Ít đá',
+    'Không đá',
+    'Đá riêng',
+    'Nhiều sữa',
+    'Uống nóng',
+    'Mang về',
+    'Ít ngọt',
+    'Đậm cà phê',
+    'Nhiều đá',
+    'Giao cùng lúc'
+  ];
+
+  const [savedNoteTags, setSavedNoteTags] = useState(() => {
+    try {
+      const saved = localStorage.getItem('POS_SAVED_NOTE_TAGS');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Lỗi đọc POS_SAVED_NOTE_TAGS:', e);
+    }
+    return DEFAULT_NOTE_SUGGESTIONS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('POS_SAVED_NOTE_TAGS', JSON.stringify(savedNoteTags));
+    } catch (e) {
+      console.warn('Lỗi lưu POS_SAVED_NOTE_TAGS:', e);
+    }
+  }, [savedNoteTags]);
+
+  // Ref và State phục vụ nút cuộn & tìm kiếm nhanh thẻ ghi chú
+  const orderNoteTagsScrollRef = useRef(null);
+  const [isNoteTagsExpanded, setIsNoteTagsExpanded] = useState(false);
+  const [noteSearchFilter, setNoteSearchFilter] = useState('');
+
+  // Hàm cuộn ngang danh sách thẻ ghi chú
+  const scrollNoteTags = (direction) => {
+    if (orderNoteTagsScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -180 : 180;
+      orderNoteTagsScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  // Hàm chuẩn hóa tiếng Việt không dấu để tìm kiếm thông minh (VD: gõ 'i' -> khớp 'ít', 'd' -> khớp 'đá')
+  const normalizeVietnamese = (str) =>
+    (str || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .trim();
+
+  // Hàm sắp xếp ưu tiên thẻ ghi chú theo từ khóa đang gõ (VD: bấm 'i' -> đẩy 'Ít đường', 'Ít đá', 'Ít ngọt' lên đầu)
+  const sortTagsByQuery = (tags, query) => {
+    if (!query || typeof query !== 'string') return tags;
+    // Lấy cụm từ cuối cùng đang gõ nếu có dấu phẩy (VD: "Không đá, i" -> tìm "i")
+    const lastToken = query.split(/[,;\n|]/).pop().trim();
+    if (!lastToken) return tags;
+
+    const normQuery = normalizeVietnamese(lastToken);
+    if (!normQuery) return tags;
+
+    return [...tags].sort((a, b) => {
+      const normA = normalizeVietnamese(a);
+      const normB = normalizeVietnamese(b);
+
+      const aStarts = normA.startsWith(normQuery);
+      const bStarts = normB.startsWith(normQuery);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+
+      const aIncludes = normA.includes(normQuery);
+      const bIncludes = normB.includes(normQuery);
+      if (aIncludes && !bIncludes) return -1;
+      if (!aIncludes && bIncludes) return 1;
+
+      return 0;
+    });
+  };
+
+  // Hàm tự động ghi nhớ và lưu ghi chú mới vào danh sách gợi ý
+  const saveNewNoteTag = (newNote) => {
+    if (!newNote || typeof newNote !== 'string') return;
+    const parts = newNote.split(/[,;\n|]/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+
+    let newlyAdded = [];
+    setSavedNoteTags((prev) => {
+      let updated = [...prev];
+      parts.forEach((part) => {
+        if (
+          part.length >= 2 &&
+          part.length <= 40 &&
+          !updated.some((t) => t.toLowerCase() === part.toLowerCase())
+        ) {
+          updated = [part, ...updated];
+          newlyAdded.push(part);
+        }
+      });
+      return updated.slice(0, 40);
+    });
+
+    if (newlyAdded.length > 0) {
+      showInfo(`Đã tự động lưu ghi nhớ gợi ý: "${newlyAdded.join(', ')}" cho các lần sau!`);
+    }
+  };
+
+  // Hàm xóa bớt gợi ý không dùng nữa
+  const removeSavedNoteTag = (tagToRemove, e) => {
+    if (e) e.stopPropagation();
+    setSavedNoteTags((prev) => prev.filter((t) => t !== tagToRemove));
+  };
+
+  // Hàm bấm 1-chạm để gắn/bỏ ghi chú cho món ăn
+  const toggleItemNoteTag = (itemId, currentNote, tag) => {
+    const parts = (currentNote || '').split(',').map((s) => s.trim()).filter(Boolean);
+    let newNote = '';
+    if (parts.some((p) => p.toLowerCase() === tag.toLowerCase())) {
+      newNote = parts.filter((p) => p.toLowerCase() !== tag.toLowerCase()).join(', ');
+    } else {
+      newNote = [...parts, tag].join(', ');
+    }
+    updateItemNote(itemId, newNote);
+    saveNewNoteTag(tag);
+  };
+
+  // Hàm bấm 1-chạm để gắn/bỏ ghi chú cho toàn đơn
+  const toggleOrderNoteTag = (tag) => {
+    const parts = (orderNote || '').split(',').map((s) => s.trim()).filter(Boolean);
+    let newNote = '';
+    if (parts.some((p) => p.toLowerCase() === tag.toLowerCase())) {
+      newNote = parts.filter((p) => p.toLowerCase() !== tag.toLowerCase()).join(', ');
+    } else {
+      newNote = [...parts, tag].join(', ');
+    }
+    setTableNotes((prev) => ({
+      ...prev,
+      [cartKey]: newNote,
+    }));
+    saveNewNoteTag(tag);
+  };
   const [pendingOrderCodes, setPendingOrderCodes] = useState({});
   const [selectedStaff, setSelectedStaff] = useState(staffList[0]?.id || '');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -314,6 +463,29 @@ export default function PosArea({
 
     setShowReserveModal(false);
     setSelectedTableId(tableId);
+
+    // Lưu vào Lịch sử đặt bàn (POS_RESERVATION_HISTORY)
+    try {
+      const newReservation = {
+        id: 'RES-' + Date.now(),
+        tableId: targetReserveTable.id,
+        tableName: targetReserveTable.name,
+        area: targetReserveTable.area,
+        customerName: reserveFormName.trim(),
+        customerPhone: reserveFormPhone.trim(),
+        reserveTime: reserveFormTime,
+        reserveDate: new Date().toLocaleDateString('vi-VN'),
+        note: reserveFormNote.trim(),
+        status: 'WAITING',
+        createdAt: `${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${new Date().toLocaleDateString('vi-VN')}`,
+      };
+      const existingResRaw = localStorage.getItem('POS_RESERVATION_HISTORY');
+      const existingRes = existingResRaw ? JSON.parse(existingResRaw) : [];
+      localStorage.setItem('POS_RESERVATION_HISTORY', JSON.stringify([newReservation, ...existingRes]));
+    } catch (errRes) {
+      console.warn('Lỗi ghi nhật ký đặt bàn:', errRes);
+    }
+
     showSuccess(`Đã đặt bàn "${targetReserveTable.name}" cho ${reserveFormName} lúc ${reserveFormTime}!`);
   };
 
@@ -343,6 +515,28 @@ export default function PosArea({
       } else {
         showSuccess(`Đã hủy đặt bàn "${table.name}" thành công! Bàn đã trở lại trạng thái Rảnh.`);
       }
+
+      // Cập nhật trạng thái hủy vào Lịch sử đặt bàn
+      try {
+        const existingResRaw = localStorage.getItem('POS_RESERVATION_HISTORY');
+        if (existingResRaw) {
+          const list = JSON.parse(existingResRaw);
+          const updated = list.map((r) =>
+            r.tableId === table.id && r.status === 'WAITING'
+              ? {
+                  ...r,
+                  status: isAutoCancel ? 'CANCELLED_AUTO' : 'CANCELLED_MANUAL',
+                  cancelledAt: `${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${new Date().toLocaleDateString('vi-VN')}${
+                    isAutoCancel ? ' (Quá 10 phút vắng mặt)' : ''
+                  }`,
+                }
+              : r
+          );
+          localStorage.setItem('POS_RESERVATION_HISTORY', JSON.stringify(updated));
+        }
+      } catch (errRes) {
+        console.warn('Lỗi cập nhật lịch sử hủy đặt bàn:', errRes);
+      }
     };
 
     if (isAutoCancel) {
@@ -363,6 +557,27 @@ export default function PosArea({
   const handleCheckinReservation = (table) => {
     if (!table) return;
     setTableOccupiedStatus(table.id, true);
+
+    // Cập nhật trạng thái nhận bàn vào Lịch sử đặt bàn
+    try {
+      const existingResRaw = localStorage.getItem('POS_RESERVATION_HISTORY');
+      if (existingResRaw) {
+        const list = JSON.parse(existingResRaw);
+        const updated = list.map((r) =>
+          r.tableId === table.id && r.status === 'WAITING'
+            ? {
+                ...r,
+                status: 'ARRIVED',
+                arrivedAt: `${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${new Date().toLocaleDateString('vi-VN')}`,
+              }
+            : r
+        );
+        localStorage.setItem('POS_RESERVATION_HISTORY', JSON.stringify(updated));
+      }
+    } catch (errRes) {
+      console.warn('Lỗi cập nhật lịch sử nhận bàn:', errRes);
+    }
+
     showSuccess(`Khách ${table.reservedName || ''} đã nhận "${table.name}". Chúc quý khách ngon miệng!`);
   };
 
@@ -906,6 +1121,46 @@ export default function PosArea({
   const confirmPaymentAndPrint = () => {
     if (currentInvoice) {
       onCompleteOrder(currentInvoice);
+
+      // Lưu nhật ký vào Lịch sử bàn đã dùng (POS_TABLE_USAGE_HISTORY)
+      try {
+        const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        const nowDateStr = new Date().toLocaleDateString('vi-VN');
+        const seatedTimeStr = currentInvoice.seatedAt || new Date(Date.now() - 40 * 60 * 1000).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+        const newUsage = {
+          id: 'TU-' + Date.now(),
+          tableId: selectedTable?.id || 'T1',
+          tableName: currentInvoice.tableName,
+          area: selectedTable?.area || 'Phòng thường',
+          seatedAt: `${seatedTimeStr} - ${nowDateStr}`,
+          completedAt: `${nowTimeStr} - ${nowDateStr}`,
+          durationMinutes: 40,
+          orderId: currentInvoice.id,
+          items: (currentInvoice.items || []).map((it) => ({
+            id: it.id,
+            name: it.name,
+            price: it.price,
+            qty: it.qty,
+            itemNote: it.itemNote || '',
+            category: it.category || '',
+            orderedAt: it.orderedAt || seatedTimeStr,
+          })),
+          totalItemsCount: (currentInvoice.items || []).reduce((s, it) => s + it.qty, 0),
+          subTotal: currentInvoice.subTotal,
+          discount: currentInvoice.discountAmount || 0,
+          total: currentInvoice.total,
+          paymentMethod: currentInvoice.paymentMethod,
+          orderNote: currentInvoice.orderNote || '',
+          staffName: currentInvoice.staffName || 'Tiến Phát',
+        };
+
+        const existingRaw = localStorage.getItem('POS_TABLE_USAGE_HISTORY');
+        const existingList = existingRaw ? JSON.parse(existingRaw) : [];
+        localStorage.setItem('POS_TABLE_USAGE_HISTORY', JSON.stringify([newUsage, ...existingList]));
+      } catch (errUsage) {
+        console.warn('Lỗi lưu lịch sử bàn đã dùng:', errUsage);
+      }
 
       const targetGroupId = selectedTable?.groupId;
 
@@ -1618,34 +1873,248 @@ export default function PosArea({
                       </div>
                     </div>
 
-                    <input
-                      type="text"
-                      value={item.itemNote || ''}
-                      onChange={(e) => updateItemNote(item.id, e.target.value)}
-                      placeholder="✏️ Ghi chú món (VD: Ít đường, nhiều đá...)"
-                      className="w-full text-xs bg-white border border-gray-300 rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-                    />
+                    <div className="mt-1">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={item.itemNote || ''}
+                          onChange={(e) => updateItemNote(item.id, e.target.value)}
+                          onBlur={(e) => saveNewNoteTag(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              saveNewNoteTag(e.target.value);
+                              e.target.blur();
+                            }
+                          }}
+                          placeholder="✏️ Ghi chú (VD: Ít đường, nhiều đá... Enter để lưu)"
+                          className="w-full text-xs bg-white border border-gray-300 rounded-lg px-2.5 py-1 pr-6 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                        />
+                        {item.itemNote && (
+                          <button
+                            type="button"
+                            onClick={() => updateItemNote(item.id, '')}
+                            title="Xóa ghi chú món này"
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 text-xs w-4 h-4 flex items-center justify-center rounded-full"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Danh sách thẻ ghi chú bấm-chọn nhanh (Tự động lưu và nhớ, ưu tiên theo từ khóa đang gõ) */}
+                      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                        <span className="text-[10px] text-gray-400 font-medium">Gợi ý nhanh:</span>
+                        {sortTagsByQuery(savedNoteTags, item.itemNote).slice(0, 6).map((tag) => {
+                          const isSelected = (item.itemNote || '')
+                            .split(',')
+                            .map((s) => s.trim().toLowerCase())
+                            .includes(tag.toLowerCase());
+                          return (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleItemNoteTag(item.id, item.itemNote, tag)}
+                              className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium transition flex items-center gap-0.5 ${
+                                isSelected
+                                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                  : 'bg-white hover:bg-amber-50 text-gray-600 border-gray-200 hover:border-amber-300'
+                              }`}
+                            >
+                              <span>{isSelected ? '✓' : '+'}</span>
+                              <span>{tag}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
             </div>
 
             <div className="mb-4">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                📌 Ghi chú chung cho đơn hàng:
-              </label>
-              <input
-                type="text"
-                value={orderNote}
-                onChange={(e) =>
-                  setTableNotes((prev) => ({
-                    ...prev,
-                    [cartKey]: e.target.value,
-                  }))
-                }
-                placeholder="VD: Khách đặt trước 30p, giao cùng lúc..."
-                className="w-full border border-gray-300 p-2 rounded-xl text-xs bg-amber-50/50 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-gray-700 uppercase">
+                  📌 Ghi chú chung cho đơn hàng:
+                </label>
+                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Tự nhớ ghi chú mới
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={orderNote}
+                  onChange={(e) =>
+                    setTableNotes((prev) => ({
+                      ...prev,
+                      [cartKey]: e.target.value,
+                    }))
+                  }
+                  onBlur={(e) => saveNewNoteTag(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      saveNewNoteTag(e.target.value);
+                      e.target.blur();
+                    }
+                  }}
+                  placeholder="VD: Mang về, Khách quen, Giao cùng lúc... (Enter hoặc bấm ra ngoài để tự lưu)"
+                  className="w-full border border-gray-300 p-2 pr-7 rounded-xl text-xs bg-amber-50/50 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                />
+                {orderNote && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTableNotes((prev) => ({
+                        ...prev,
+                        [cartKey]: '',
+                      }))
+                    }
+                    title="Xóa ghi chú đơn hàng"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 text-xs w-4 h-4 flex items-center justify-center rounded-full"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Các thẻ Tag ghi chú thông minh với thanh cuộn gọn gàng & tìm kiếm nhanh */}
+              {(() => {
+                const activeQuery = noteSearchFilter || orderNote || '';
+                const sortedTags = sortTagsByQuery(savedNoteTags, activeQuery);
+                const queryToken = activeQuery.split(/[,;\n|]/).pop().trim();
+                const hasMatchingFilter = queryToken.length > 0;
+
+                const renderTagPill = (tag) => {
+                  const isSelected = (orderNote || '')
+                    .split(',')
+                    .map((s) => s.trim().toLowerCase())
+                    .includes(tag.toLowerCase());
+                  const isHighlighted =
+                    hasMatchingFilter &&
+                    normalizeVietnamese(tag).includes(normalizeVietnamese(queryToken));
+
+                  return (
+                    <span
+                      key={tag}
+                      className={`inline-flex items-center rounded-lg border text-xs transition-all shrink-0 group ${
+                        isSelected
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : isHighlighted
+                          ? 'bg-amber-50 text-amber-900 border-amber-400 ring-1 ring-amber-400 font-bold'
+                          : 'bg-white hover:bg-amber-50 text-gray-700 border-gray-200 hover:border-amber-300'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleOrderNoteTag(tag)}
+                        className="px-2 py-1 font-medium flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="text-[10px]">{isSelected ? '✓' : isHighlighted ? '★' : '+'}</span>
+                        <span>{tag}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => removeSavedNoteTag(tag, e)}
+                        title={`Xóa gợi ý "${tag}"`}
+                        className={`px-1 py-1 text-[9px] rounded-r-lg opacity-0 group-hover:opacity-100 transition cursor-pointer ${
+                          isSelected
+                            ? 'text-white/80 hover:text-white hover:bg-amber-700'
+                            : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                        }`}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  );
+                };
+
+                return (
+                  <div className="mt-2 p-2 bg-gray-50/90 rounded-xl border border-gray-200 shadow-2xs">
+                    {/* Thanh điều khiển: Tiêu đề + Ô tìm kiếm nhanh + Nút Cuộn Trái/Phải + Mở rộng */}
+                    <div className="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-gray-200/60">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[11px] font-bold text-gray-700 flex items-center gap-1 shrink-0">
+                          <span>💡 Gợi ý</span>
+                          {hasMatchingFilter && (
+                            <span className="text-[9px] bg-amber-200/80 text-amber-900 px-1.5 py-0.2 rounded-full font-semibold">
+                              Khớp "{queryToken}"
+                            </span>
+                          )}
+                        </span>
+                        {/* Ô lọc nhanh */}
+                        <div className="relative shrink-0">
+                          <input
+                            type="text"
+                            value={noteSearchFilter}
+                            onChange={(e) => setNoteSearchFilter(e.target.value)}
+                            placeholder="🔍 Lọc (gõ 'i', 'đá')..."
+                            className="w-24 text-[10px] bg-white border border-gray-300 rounded-md px-1.5 py-0.5 focus:w-32 transition-all focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                          {noteSearchFilter && (
+                            <button
+                              type="button"
+                              onClick={() => setNoteSearchFilter('')}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 hover:text-red-500"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Nút Cuộn ◀ ▶ và Nút Xem Tất Cả / Thu Gọn */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!isNoteTagsExpanded && (
+                          <div className="flex items-center bg-white border border-gray-300 rounded-md shadow-2xs p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => scrollNoteTags('left')}
+                              title="Cuộn sang trái (Xem thêm thẻ trước)"
+                              className="w-5 h-5 flex items-center justify-center rounded text-gray-600 hover:text-amber-700 hover:bg-amber-100 text-[10px] font-bold transition active:scale-95"
+                            >
+                              ◀
+                            </button>
+                            <div className="w-px h-3 bg-gray-200 mx-0.5"></div>
+                            <button
+                              type="button"
+                              onClick={() => scrollNoteTags('right')}
+                              title="Cuộn sang phải (Xem thêm thẻ tiếp theo)"
+                              className="w-5 h-5 flex items-center justify-center rounded text-gray-600 hover:text-amber-700 hover:bg-amber-100 text-[10px] font-bold transition active:scale-95"
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsNoteTagsExpanded(!isNoteTagsExpanded)}
+                          className="text-[10px] text-amber-700 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-md font-semibold transition active:scale-95"
+                          title={isNoteTagsExpanded ? 'Thu gọn thành thanh cuộn 1 dòng' : 'Mở rộng hiển thị toàn bộ thẻ'}
+                        >
+                          {isNoteTagsExpanded ? '▲ Gọn' : '▼ Tất cả'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Vùng hiển thị thẻ: Cuộn 1 dòng siêu gọn (mặc định) HOẶC Mở rộng nhiều dòng */}
+                    {isNoteTagsExpanded ? (
+                      <div className="max-h-36 overflow-y-auto flex flex-wrap gap-1.5 p-0.5">
+                        {sortedTags.map(renderTagPill)}
+                      </div>
+                    ) : (
+                      <div
+                        ref={orderNoteTagsScrollRef}
+                        className="flex items-center gap-1.5 overflow-x-auto py-1 px-0.5 scroll-smooth"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      >
+                        {sortedTags.map(renderTagPill)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="space-y-3 text-sm">
