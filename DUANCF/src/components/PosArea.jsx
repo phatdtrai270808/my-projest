@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNotification } from './CustomNotification';
 import {
   apiCreateTable,
@@ -78,6 +78,15 @@ export default function PosArea({
   const orderNoteTagsScrollRef = useRef(null);
   const [isNoteTagsExpanded, setIsNoteTagsExpanded] = useState(false);
   const [noteSearchFilter, setNoteSearchFilter] = useState('');
+
+  // Ref và hàm cuộn ngang thanh danh mục thực đơn
+  const categoryTabsScrollRef = useRef(null);
+  const scrollCategoryTabs = (direction) => {
+    if (categoryTabsScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -200 : 200;
+      categoryTabsScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // Hàm cuộn ngang danh sách thẻ ghi chú
   const scrollNoteTags = (direction) => {
@@ -229,6 +238,53 @@ export default function PosArea({
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Bộ lọc danh mục & tìm kiếm món cho Thực đơn món ăn
+  const [menuFilterCategory, setMenuFilterCategory] = useState('Tất cả');
+  const [menuSearchTerm, setMenuSearchTerm] = useState('');
+
+  // Hàm lấy icon theo tên danh mục
+  const getCategoryIcon = (cat) => {
+    if (!cat) return '🍽️';
+    const c = cat.toLowerCase();
+    if (c.includes('cà phê') || c.includes('cafe') || c.includes('coffee')) return '☕';
+    if (c.includes('trà') || c.includes('tea')) return '🍵';
+    if (c.includes('đá xay') || c.includes('nước') || c.includes('sinh tố') || c.includes('ép') || c.includes('uống')) return '🥤';
+    if (c.includes('bánh') || c.includes('ăn') || c.includes('food')) return '🥐';
+    return '🍽️';
+  };
+
+  // Danh sách các danh mục có trong menu
+  const menuCategories = useMemo(() => {
+    const cats = ['Tất cả'];
+    menu.forEach((item) => {
+      const cat = item.category || 'Khác';
+      if (!cats.includes(cat)) {
+        cats.push(cat);
+      }
+    });
+    return cats;
+  }, [menu]);
+
+  // Thực đơn sau khi lọc theo Danh mục và Ô tìm kiếm
+  const filteredMenu = useMemo(() => {
+    return menu.filter((item) => {
+      const itemCat = item.category || 'Khác';
+      const matchCat =
+        menuFilterCategory === 'Tất cả' ||
+        itemCat === menuFilterCategory ||
+        (menuFilterCategory === 'Cà Phê' && (itemCat.includes('Cà Phê') || itemCat.includes('Cafe'))) ||
+        (menuFilterCategory === 'Trà & Trà Sữa' && (itemCat.includes('Trà') || itemCat.includes('Tea'))) ||
+        (menuFilterCategory === 'Nước Uống & Đá Xay' && (itemCat.includes('Nước') || itemCat.includes('Đá Xay') || itemCat.includes('Sinh Tố') || itemCat.includes('Ép'))) ||
+        (menuFilterCategory === 'Đồ Ăn & Bánh' && (itemCat.includes('Bánh') || itemCat.includes('Ăn')));
+
+      const matchSearch =
+        !menuSearchTerm ||
+        normalizeVietnamese(item.name).includes(normalizeVietnamese(menuSearchTerm));
+
+      return matchCat && matchSearch;
+    });
+  }, [menu, menuFilterCategory, menuSearchTerm]);
 
   // Lấy bàn hiện tại đang được chọn (luôn cập nhật theo state tables mới nhất)
   const selectedTable = tables.find((t) => t.id === selectedTableId) || tables[0] || {};
@@ -1598,97 +1654,215 @@ export default function PosArea({
       {/* SECTION 2 & 3: THỰC ĐƠN & HÓA ĐƠN */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Thực đơn món ăn */}
-        <div className="md:col-span-7 bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-          <div className="flex justify-between items-center mb-4 pb-2 border-b flex-wrap gap-2">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <span>☕ Thực Đơn Món Ăn ({menu.length})</span>
-            </h3>
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${
-              selectedTable?.occupied
-                ? 'bg-red-50 text-red-700 border-red-200'
-                : selectedTable?.isReserved
-                ? 'bg-purple-50 text-purple-700 border-purple-200'
-                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            }`}>
-              Đang chọn: <strong>{selectedTable?.name}</strong> (
-              {selectedTable?.occupied
-                ? '🔴 Đang bận'
-                : selectedTable?.isReserved
-                ? `🟣 Đặt trước (${selectedTable?.reservedTime})`
-                : '🟢 Bàn rảnh'}
-              )
-              {selectedTable?.groupId && (
-                <span className="font-bold text-amber-800 ml-1">
-                  (Nhóm: {tables.filter(t => t.groupId === selectedTable.groupId).map(t => t.name.split('-')[0]).join(' + ')})
-                </span>
-              )}
-            </span>
-          </div>
-
-          {/* Banner thông báo Order Thêm khi bàn BẬN */}
-          {selectedTable?.occupied && (
-            <div className="mb-4 bg-gradient-to-r from-amber-50 to-red-50 border border-amber-300 p-2.5 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs">
-              <div className="flex items-center gap-2 text-amber-950 font-bold">
-                <span className="p-1 bg-amber-200 text-amber-950 rounded-lg text-sm">☕</span>
-                <span>Bàn đang <strong>BẬN (Có khách)</strong>. Bấm vào bất kỳ món nào dưới đây để <strong>Order thêm</strong> vào hóa đơn bàn này!</span>
-              </div>
-              <span className="text-[11px] font-extrabold text-red-600 bg-white px-2.5 py-1 rounded-xl border border-red-200 shadow-sm flex-shrink-0">
-                Đang có: {cart.reduce((s, it) => s + it.qty, 0)} món
+        <div className="md:col-span-7 bg-white p-6 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-3 pb-2 border-b flex-wrap gap-2">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <span>☕ Thực Đơn Món Ăn ({filteredMenu.length}/{menu.length})</span>
+              </h3>
+              <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${
+                selectedTable?.occupied
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : selectedTable?.isReserved
+                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}>
+                Đang chọn: <strong>{selectedTable?.name}</strong> (
+                {selectedTable?.occupied
+                  ? '🔴 Đang bận'
+                  : selectedTable?.isReserved
+                  ? `🟣 Đặt trước (${selectedTable?.reservedTime})`
+                  : '🟢 Bàn rảnh'}
+                )
+                {selectedTable?.groupId && (
+                  <span className="font-bold text-amber-800 ml-1">
+                    (Nhóm: {tables.filter(t => t.groupId === selectedTable.groupId).map(t => t.name.split('-')[0]).join(' + ')})
+                  </span>
+                )}
               </span>
             </div>
-          )}
 
-          {menu.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 italic">
-              Chưa có món nào trong thực đơn. Vui lòng sang tab <strong>"📖 Quản Lý Công Thức"</strong> để tạo món mới!
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4">
-              {menu.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 border border-gray-200 rounded-2xl hover:border-amber-500 hover:shadow-md transition bg-white flex gap-3 items-center relative group"
-                >
-                  {item.recipe && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRecipeModalDish(item);
-                      }}
-                      title="Xem công thức pha chế"
-                      className="absolute -top-2 -right-2 bg-amber-500 hover:bg-amber-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md transition opacity-0 group-hover:opacity-100 z-10"
-                    >
-                      📝
-                    </button>
-                  )}
-
-                  <div
-                    onClick={() => addToCart(item)}
-                    className="flex gap-3 items-center flex-1 cursor-pointer"
+            {/* THANH TÌM KIẾM MÓN & LỌC DANH MỤC PHÂN THEO NHÓM */}
+            <div className="space-y-2.5 mb-4">
+              {/* Ô TÌM KIẾM MÓN NHANH */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">
+                  🔍
+                </span>
+                <input
+                  type="text"
+                  value={menuSearchTerm}
+                  onChange={(e) => setMenuSearchTerm(e.target.value)}
+                  placeholder="Tìm món nhanh (VD: muối, đào, latte, matcha, bánh...)"
+                  className="w-full pl-9 pr-8 py-2 text-xs font-medium rounded-xl border border-gray-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                />
+                {menuSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setMenuSearchTerm('')}
+                    className="absolute inset-y-0 right-2.5 flex items-center text-gray-400 hover:text-gray-700 text-xs px-1 font-bold"
                   >
+                    ✖
+                  </button>
+                )}
+              </div>
+
+              {/* THANH TAB PHÂN CHIA DANH MỤC (CÀ PHÊ, TRÀ, NƯỚC UỐNG, ĐỒ ĂN...) */}
+              <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => scrollCategoryTabs('left')}
+                  className="w-7 h-7 flex items-center justify-center rounded-xl bg-white hover:bg-amber-500 hover:text-white text-slate-700 text-xs font-black shadow-xs transition flex-shrink-0 border border-slate-200"
+                  title="Cuộn danh mục sang trái"
+                >
+                  ◀
+                </button>
+
+                <div
+                  ref={categoryTabsScrollRef}
+                  className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 flex-1 scrollbar-thin scrollbar-thumb-amber-400 scrollbar-track-slate-100"
+                  style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#f59e0b #f1f5f9'
+                  }}
+                >
+                  {menuCategories.map((cat) => {
+                    const count = cat === 'Tất cả'
+                      ? menu.length
+                      : menu.filter((it) => (it.category || 'Khác') === cat).length;
+                    const isActive = menuFilterCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setMenuFilterCategory(cat)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${
+                          isActive
+                            ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-300'
+                            : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+                        }`}
+                      >
+                        <span>{getCategoryIcon(cat)}</span>
+                        <span>{cat}</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                          isActive ? 'bg-amber-800 text-amber-100' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => scrollCategoryTabs('right')}
+                  className="w-7 h-7 flex items-center justify-center rounded-xl bg-white hover:bg-amber-500 hover:text-white text-slate-700 text-xs font-black shadow-xs transition flex-shrink-0 border border-slate-200"
+                  title="Cuộn danh mục sang phải"
+                >
+                  ▶
+                </button>
+              </div>
+            </div>
+
+            {/* Banner thông báo Order Thêm khi bàn BẬN */}
+            {selectedTable?.occupied && (
+              <div className="mb-4 bg-gradient-to-r from-amber-50 to-red-50 border border-amber-300 p-2.5 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs">
+                <div className="flex items-center gap-2 text-amber-950 font-bold">
+                  <span className="p-1 bg-amber-200 text-amber-950 rounded-lg text-sm">☕</span>
+                  <span>Bàn đang <strong>BẬN (Có khách)</strong>. Bấm vào bất kỳ món nào dưới đây để <strong>Order thêm</strong> vào hóa đơn bàn này!</span>
+                </div>
+                <span className="text-[11px] font-extrabold text-red-600 bg-white px-2.5 py-1 rounded-xl border border-red-200 shadow-sm flex-shrink-0">
+                  Đang có: {cart.reduce((s, it) => s + it.qty, 0)} món
+                </span>
+              </div>
+            )}
+
+            {menu.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 italic">
+                Chưa có món nào trong thực đơn. Vui lòng sang tab <strong>"📖 Quản Lý Công Thức"</strong> để tạo món mới!
+              </div>
+            ) : filteredMenu.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-gray-200">
+                <div className="text-2xl mb-1">🔍</div>
+                <div className="text-sm font-bold text-slate-700 mb-1">Không tìm thấy món phù hợp</div>
+                <p className="text-xs text-gray-500 mb-3">Thử xóa bộ lọc tìm kiếm hoặc chuyển sang danh mục khác</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuFilterCategory('Tất cả');
+                    setMenuSearchTerm('');
+                  }}
+                  className="text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-xl transition"
+                >
+                  Xem tất cả món
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 max-h-[530px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-amber-300 scrollbar-track-slate-100">
+                {filteredMenu.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => addToCart(item)}
+                    className="p-3 border border-gray-200 rounded-2xl hover:border-amber-500 hover:shadow-md transition bg-white flex items-center justify-between gap-2.5 relative group overflow-hidden cursor-pointer select-none"
+                  >
+                    {/* HÌNH ẢNH HOẶC ICON MÓN */}
                     {item.image ? (
                       <img
                         src={item.image}
                         alt={item.name}
-                        className="w-16 h-16 object-cover rounded-xl group-hover:scale-105 transition duration-200 flex-shrink-0"
+                        className="w-14 h-14 object-cover rounded-xl group-hover:scale-105 transition duration-200 flex-shrink-0 border border-gray-100"
                       />
                     ) : (
-                      <div className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 font-bold text-lg flex-shrink-0">
-                        ☕
+                      <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 font-bold text-xl flex-shrink-0 border border-amber-200">
+                        {getCategoryIcon(item.category)}
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-800 truncate group-hover:text-amber-700">{item.name}</div>
-                      <div className="text-amber-600 font-extrabold mt-0.5 text-sm">
+
+                    {/* THÔNG TIN CHI TIẾT MÓN (ĐƯỢC GIỚI HẠN GỌN GÀNG TRONG Ô) */}
+                    <div className="flex-1 min-w-0 pr-1">
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1 mb-1 truncate max-w-full">
+                        {getCategoryIcon(item.category)} {item.category || 'Khác'}
+                      </span>
+                      <div
+                        className="font-bold text-slate-800 truncate group-hover:text-amber-700 text-sm"
+                        title={item.name}
+                      >
+                        {item.name}
+                      </div>
+                      <div className="text-amber-600 font-extrabold mt-0.5 text-xs">
                         {item.price.toLocaleString()} VNĐ
                       </div>
                     </div>
-                    <span className="text-amber-500 text-2xl font-bold group-hover:scale-125 transition pr-1">+</span>
+
+                    {/* KHU VỰC NÚT BẤM (GỒM NÚT CÔNG THỨC 📝 VÀ DẤU CỘNG +, HOÀN TOÀN Ở TRONG Ô) */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {item.recipe && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRecipeModalDish(item);
+                          }}
+                          title="Xem công thức pha chế"
+                          className="w-7 h-7 bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white rounded-xl flex items-center justify-center text-xs font-bold transition shadow-2xs border border-amber-200 hover:border-amber-500"
+                        >
+                          📝
+                        </button>
+                      )}
+
+                      <div
+                        className="w-7 h-7 rounded-xl bg-amber-50 group-hover:bg-amber-600 text-amber-700 group-hover:text-white font-black text-base flex items-center justify-center transition shadow-2xs border border-amber-200 group-hover:border-amber-600"
+                        title="Thêm vào hóa đơn"
+                      >
+                        +
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Hóa đơn gọi món */}

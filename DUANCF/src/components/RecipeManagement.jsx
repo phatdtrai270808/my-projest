@@ -6,6 +6,7 @@ export default function RecipeManagement({
   onAddDish,
   onUpdateDish,
   onDeleteDish,
+  onResetMenu,
 }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -25,7 +26,8 @@ export default function RecipeManagement({
 
   const { showSuccess, showWarning } = useNotification();
 
-  const CATEGORIES = ['Cà Phê', 'Trà Trái Cây', 'Đá Xay', 'Bánh Ngọt', 'Khác'];
+  // Danh mục chuẩn của quán
+  const CATEGORIES = ['Cà Phê', 'Trà & Trà Sữa', 'Nước Uống & Đá Xay', 'Đồ Ăn & Bánh', 'Khác'];
 
   // Chọn món vào form để chỉnh sửa
   const handleSelectDishForEdit = (dish) => {
@@ -346,14 +348,27 @@ export default function RecipeManagement({
               <span>☕ Danh Sách Công Thức Món ({filteredMenu.length}/{menu.length})</span>
             </h2>
 
-            {/* Ô TÌM KIẾM MÓN */}
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="🔍 Tìm tên món..."
-              className="text-xs border border-gray-300 px-3 py-1.5 rounded-xl bg-slate-50 focus:bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none min-w-[150px]"
-            />
+            <div className="flex items-center gap-2">
+              {onResetMenu && (
+                <button
+                  type="button"
+                  onClick={onResetMenu}
+                  className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 shadow-2xs"
+                  title="Khôi phục lại 25 món cà phê, trà, nước uống, đồ ăn được khảo sát chuẩn"
+                >
+                  <span>🔄</span>
+                  <span>Nạp 25 món chuẩn</span>
+                </button>
+              )}
+              {/* Ô TÌM KIẾM MÓN */}
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="🔍 Tìm tên món..."
+                className="text-xs border border-gray-300 px-3 py-1.5 rounded-xl bg-slate-50 focus:bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none min-w-[150px]"
+              />
+            </div>
           </div>
 
           {/* TAB LỌC DANH MỤC */}

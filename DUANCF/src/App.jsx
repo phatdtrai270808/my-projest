@@ -90,13 +90,22 @@ function MainApp() {
       const savedMenu = localStorage.getItem('POS_MENU_DATA');
       if (savedMenu) {
         const parsed = JSON.parse(savedMenu);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        // Nếu đã có thực đơn đầy đủ (từ 10 món trở lên), dùng dữ liệu này; nếu rỗng thì nạp 25 món khảo sát
+        if (Array.isArray(parsed) && parsed.length >= 10) return parsed;
       }
     } catch (e) {
       console.warn(e);
     }
     return INITIAL_MENU;
   });
+
+  const handleResetMenu = () => {
+    showConfirm('Bạn có chắc muốn khôi phục lại toàn bộ 25 món thực đơn chuẩn được khảo sát không?', () => {
+      setMenu(INITIAL_MENU);
+      localStorage.setItem('POS_MENU_DATA', JSON.stringify(INITIAL_MENU));
+      showSuccess('Đã khôi phục thành công 25 món thực đơn chuẩn!');
+    });
+  };
 
   const [staffList] = useState(INITIAL_STAFF);
   const [orders, setOrders] = useState(() => {
@@ -482,6 +491,7 @@ function MainApp() {
                 onAddDish={handleAddDish}
                 onUpdateDish={handleUpdateDish}
                 onDeleteDish={handleDeleteDish}
+                onResetMenu={handleResetMenu}
               />
             )}
             {activeTab === 'shift' && (
