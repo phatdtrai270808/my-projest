@@ -3,9 +3,10 @@ import PosArea from './components/PosArea';
 import ShiftManagement from './components/ShiftManagement';
 import Payroll from './components/Payroll';
 import RecipeManagement from './components/RecipeManagement';
-import OrderHistory from './components/OrderHistory';
 import TableHistory from './components/TableHistory';
-import { INITIAL_TABLES, INITIAL_MENU, INITIAL_STAFF } from './data/initialData';
+import RevenueAnalytics from './components/RevenueAnalytics';
+import InventoryManagement from './components/InventoryManagement';
+import { INITIAL_TABLES, INITIAL_MENU, INITIAL_STAFF, INITIAL_INVENTORY } from './data/initialData';
 import { NotificationProvider, useNotification } from './components/CustomNotification';
 import {
   checkBackendStatus,
@@ -113,6 +114,53 @@ function MainApp() {
     return saved ? JSON.parse(saved) : [];
   });
   const [shiftLogs, setShiftLogs] = useState([]);
+
+  // Quản lý Kho nguyên vật liệu khởi tạo
+  const [inventory, setInventory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('POS_INVENTORY_DATA');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+    return INITIAL_INVENTORY;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('POS_INVENTORY_DATA', JSON.stringify(inventory));
+    } catch (e) {}
+  }, [inventory]);
+
+  // Tự động trừ kho nguyên vật liệu theo định lượng khi hoàn tất thanh toán hóa đơn
+  const handleDeductInventory = (orderItems) => {
+    if (!Array.isArray(orderItems) || orderItems.length === 0) return;
+    setInventory((prev) => {
+      let updated = [...prev];
+      orderItems.forEach((ordItem) => {
+        const dish = menu.find((m) => m.name === ordItem.name || m.id === ordItem.id);
+        if (dish && Array.isArray(dish.ingredients)) {
+          dish.ingredients.forEach((ing) => {
+            const neededAmount = (Number(ing.amount) || 0) * (Number(ordItem.qty) || 1);
+            const targetIdx = updated.findIndex(
+              (inv) => inv.name.toLowerCase().trim() === ing.name.toLowerCase().trim()
+            );
+            if (targetIdx !== -1) {
+              const currentStock = updated[targetIdx].stock;
+              updated[targetIdx] = {
+                ...updated[targetIdx],
+                stock: Math.max(0, currentStock - neededAmount),
+              };
+            }
+          });
+        }
+      });
+      return updated;
+    });
+  };
 
   const { showSuccess, showConfirm } = useNotification();
 
@@ -242,6 +290,83 @@ function MainApp() {
     }
   };
 
+  // Xóa đơn hàng của lượt bàn: trừ doanh thu và chuyển nguyên liệu đã pha chế vào kho hao hụt
+  const handleDeleteOrderAndRecordWastage = (targetSession) => {
+    const targetId = targetSession.orderId || targetSession.id;
+
+    // 1. Trừ doanh thu: Xóa đơn hàng khỏi state orders
+    setOrders((prev) =>
+      prev.filter((o) => o.id !== targetId && o.code !== targetId)
+    );
+
+    // 2. Chuyển nguyên liệu đã dùng của bàn vào mục Quản Lý Kho Hao Hụt (POS_AUDIT_HISTORY)
+    const wastedEntries = [];
+    if (Array.isArray(targetSession.items) && targetSession.items.length > 0) {
+      targetSession.items.forEach((it) => {
+        const dish = menu.find((m) => m.name === it.name || m.id === it.id);
+        const ings = (dish && dish.ingredients) || it.ingredients || [];
+        ings.forEach((ing) => {
+          const qty = Number(it.qty) || 1;
+          const ingAmount = (Number(ing.amount) || 1) * qty;
+          const invItem = inventory.find(
+            (inv) => inv.name.toLowerCase().trim() === ing.name.toLowerCase().trim()
+          );
+          const unitCost = invItem?.unitCost || 120;
+          const lossCost = Math.round(ingAmount * unitCost);
+
+          wastedEntries.push({
+            id: `WASTE-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+            date: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            ingName: ing.name,
+            theoryStock: invItem ? invItem.stock : 0,
+            actualStock: invItem ? invItem.stock : 0,
+            diff: -ingAmount,
+            unit: ing.unit || invItem?.unit || 'g/ml',
+            lossAmount: lossCost,
+            reason: `Hao hụt do XÓA LỊCH SỬ BÀN: ${targetSession.tableName} (Đơn: ${targetId})`,
+            status: 'ABNORMAL',
+          });
+        });
+      });
+    }
+
+    if (wastedEntries.length > 0) {
+      try {
+        const existingRaw = localStorage.getItem('POS_AUDIT_HISTORY');
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        localStorage.setItem('POS_AUDIT_HISTORY', JSON.stringify([...wastedEntries, ...existing]));
+      } catch (err) {
+        console.warn('Lỗi ghi hao hụt vào POS_AUDIT_HISTORY:', err);
+      }
+    }
+  };
+
+  // Làm mới dữ liệu từ server backend
+  const handleRefreshAllData = async () => {
+    const status = await checkBackendStatus();
+    setBackendStatus({ online: status.online, checking: false });
+    if (status.online) {
+      try {
+        const [dbTables, dbProducts, dbOrders] = await Promise.allSettled([
+          apiGetTables(),
+          apiGetProducts(),
+          apiGetOrders(),
+        ]);
+        if (dbTables.status === 'fulfilled' && dbTables.value?.length > 0) {
+          setTables(dbTables.value);
+        }
+        if (dbProducts.status === 'fulfilled' && dbProducts.value?.length > 0) {
+          setMenu(dbProducts.value);
+        }
+        if (dbOrders.status === 'fulfilled' && dbOrders.value?.length > 0) {
+          setOrders(dbOrders.value);
+        }
+      } catch (e) {
+        console.warn('⚠️ Lỗi khi đồng bộ dữ liệu từ Backend:', e);
+      }
+    }
+  };
+
   const handleAddShiftLog = (newLog) => {
     setShiftLogs((prev) => [newLog, ...prev]);
   };
@@ -256,15 +381,21 @@ function MainApp() {
     },
     {
       id: 'tableHistory',
-      label: 'Lịch Sử Bàn',
+      label: 'Lịch Sử Bàn & Hóa Đơn',
       icon: '🕒',
-      desc: 'Bàn đã dùng & Bàn đặt trước',
+      desc: 'Bàn phục vụ & in lại bill',
     },
     {
-      id: 'history',
-      label: 'Lịch Sử Hóa Đơn',
-      icon: '📜',
-      desc: 'Tra cứu mã đơn & doanh thu',
+      id: 'revenue',
+      label: 'Doanh Thu 12 Tháng',
+      icon: '📊',
+      desc: 'Lời/lỗ 12 tháng & biểu đồ',
+    },
+    {
+      id: 'inventory',
+      label: 'Quản Lý Kho & Hao Hụt',
+      icon: '📦',
+      desc: 'Nhập xuất & định lượng trừ kho',
     },
     {
       id: 'recipe',
@@ -476,18 +607,35 @@ function MainApp() {
                 menu={menu}
                 staffList={staffList}
                 orders={orders}
+                inventory={inventory}
                 onCompleteOrder={handleCompleteOrder}
+                onDeductInventory={handleDeductInventory}
               />
             )}
             {activeTab === 'tableHistory' && (
-              <TableHistory />
+              <TableHistory
+                orders={orders}
+                setOrders={setOrders}
+                menu={menu}
+                inventory={inventory}
+                onDeleteOrder={handleDeleteOrderAndRecordWastage}
+                onRefreshOrders={handleRefreshAllData}
+              />
             )}
-            {activeTab === 'history' && (
-              <OrderHistory orders={orders} />
+            {(activeTab === 'revenue' || activeTab === 'history') && (
+              <RevenueAnalytics orders={orders} />
+            )}
+            {activeTab === 'inventory' && (
+              <InventoryManagement
+                inventory={inventory}
+                setInventory={setInventory}
+                menu={menu}
+              />
             )}
             {activeTab === 'recipe' && (
               <RecipeManagement
                 menu={menu}
+                inventory={inventory}
                 onAddDish={handleAddDish}
                 onUpdateDish={handleUpdateDish}
                 onDeleteDish={handleDeleteDish}

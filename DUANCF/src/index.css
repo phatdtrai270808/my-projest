@@ -1,1 +1,41 @@
 @import "tailwindcss";
+
+/* Custom modern scrollbar for Category Tabs */
+.custom-category-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #f59e0b #f1f5f9;
+}
+.custom-category-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-category-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+.custom-category-scrollbar::-webkit-scrollbar-thumb {
+  background: #f59e0b;
+  border-radius: 9999px;
+}
+.custom-category-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d97706;
+}
+
+/* Custom vertical scrollbar */
+.custom-vertical-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #f59e0b #f8fafc;
+}
+.custom-vertical-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-vertical-scrollbar::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 9999px;
+}
+.custom-vertical-scrollbar::-webkit-scrollbar-thumb {
+  background: #f59e0b;
+  border-radius: 9999px;
+}
+.custom-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d97706;
+}

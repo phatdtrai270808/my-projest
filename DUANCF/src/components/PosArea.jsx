@@ -13,7 +13,9 @@ export default function PosArea({
   menu, 
   staffList, 
   orders = [],
-  onCompleteOrder
+  inventory = [],
+  onCompleteOrder,
+  onDeductInventory
 }) {
   const [selectedTableId, setSelectedTableId] = useState(tables[0]?.id || 'T1');
   const [selectedArea, setSelectedArea] = useState('Tất cả');
@@ -81,10 +83,39 @@ export default function PosArea({
 
   // Ref và hàm cuộn ngang thanh danh mục thực đơn
   const categoryTabsScrollRef = useRef(null);
+  const [isCatDragging, setIsCatDragging] = useState(false);
+  const [catStartX, setCatStartX] = useState(0);
+  const [catScrollLeft, setCatScrollLeft] = useState(0);
+
   const scrollCategoryTabs = (direction) => {
     if (categoryTabsScrollRef.current) {
-      const scrollAmount = direction === 'left' ? -200 : 200;
+      const scrollAmount = direction === 'left' ? -220 : 220;
       categoryTabsScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const handleCatMouseDown = (e) => {
+    if (!categoryTabsScrollRef.current) return;
+    setIsCatDragging(true);
+    setCatStartX(e.pageX - categoryTabsScrollRef.current.offsetLeft);
+    setCatScrollLeft(categoryTabsScrollRef.current.scrollLeft);
+  };
+
+  const handleCatMouseLeaveOrUp = () => {
+    setIsCatDragging(false);
+  };
+
+  const handleCatMouseMove = (e) => {
+    if (!isCatDragging || !categoryTabsScrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - categoryTabsScrollRef.current.offsetLeft;
+    const walk = (x - catStartX) * 1.5;
+    categoryTabsScrollRef.current.scrollLeft = catScrollLeft - walk;
+  };
+
+  const handleCatWheel = (e) => {
+    if (categoryTabsScrollRef.current && e.deltaY !== 0) {
+      categoryTabsScrollRef.current.scrollLeft += e.deltaY;
     }
   };
 
@@ -285,6 +316,32 @@ export default function PosArea({
       return matchCat && matchSearch;
     });
   }, [menu, menuFilterCategory, menuSearchTerm]);
+
+  // Kiểm tra món có bị thiếu nguyên liệu trong kho hay không
+  const checkDishMissingIngredients = (dish) => {
+    if (!Array.isArray(dish.ingredients) || dish.ingredients.length === 0) return null;
+    for (const ing of dish.ingredients) {
+      const found = inventory.find(
+        (inv) => inv.name.toLowerCase().trim() === ing.name.toLowerCase().trim()
+      );
+      if (!found) return `Thiếu "${ing.name}" (chưa có trong kho)`;
+      if (found.stock <= 0) return `Hết "${ing.name}" (Tồn kho = 0)`;
+      if (found.stock < (ing.amount || 1)) return `Tồn không đủ "${ing.name}"`;
+    }
+    return null;
+  };
+
+  // Xử lý bấm vào thẻ món: nếu thiếu nguyên liệu sẽ nhắc nhở nhập kho
+  const handleDishCardClick = (item) => {
+    const missingReason = checkDishMissingIngredients(item);
+    if (missingReason) {
+      showWarning(
+        `Món "${item.name}" đang tạm ngưng do kho: ${missingReason}! Vui lòng bổ sung tại tab "Quản Lý Kho".`
+      );
+      return;
+    }
+    addToCart(item);
+  };
 
   // Lấy bàn hiện tại đang được chọn (luôn cập nhật theo state tables mới nhất)
   const selectedTable = tables.find((t) => t.id === selectedTableId) || tables[0] || {};
@@ -1178,6 +1235,11 @@ export default function PosArea({
     if (currentInvoice) {
       onCompleteOrder(currentInvoice);
 
+      // Tự động trừ kho nguyên vật liệu theo định lượng công thức món
+      if (onDeductInventory && Array.isArray(currentInvoice.items)) {
+        onDeductInventory(currentInvoice.items);
+      }
+
       // Lưu nhật ký vào Lịch sử bàn đã dùng (POS_TABLE_USAGE_HISTORY)
       try {
         const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -1720,11 +1782,14 @@ export default function PosArea({
 
                 <div
                   ref={categoryTabsScrollRef}
-                  className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 flex-1 scrollbar-thin scrollbar-thumb-amber-400 scrollbar-track-slate-100"
-                  style={{
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: '#f59e0b #f1f5f9'
-                  }}
+                  onMouseDown={handleCatMouseDown}
+                  onMouseLeave={handleCatMouseLeaveOrUp}
+                  onMouseUp={handleCatMouseLeaveOrUp}
+                  onMouseMove={handleCatMouseMove}
+                  onWheel={handleCatWheel}
+                  className={`flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 flex-1 custom-category-scrollbar select-none ${
+                    isCatDragging ? 'cursor-grabbing' : 'cursor-grab'
+                  }`}
                 >
                   {menuCategories.map((cat) => {
                     const count = cat === 'Tất cả'
@@ -1799,67 +1864,86 @@ export default function PosArea({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 max-h-[530px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-amber-300 scrollbar-track-slate-100">
-                {filteredMenu.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => addToCart(item)}
-                    className="p-3 border border-gray-200 rounded-2xl hover:border-amber-500 hover:shadow-md transition bg-white flex items-center justify-between gap-2.5 relative group overflow-hidden cursor-pointer select-none"
-                  >
-                    {/* HÌNH ẢNH HOẶC ICON MÓN */}
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-14 h-14 object-cover rounded-xl group-hover:scale-105 transition duration-200 flex-shrink-0 border border-gray-100"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 font-bold text-xl flex-shrink-0 border border-amber-200">
-                        {getCategoryIcon(item.category)}
-                      </div>
-                    )}
+              <div className="grid grid-cols-2 gap-3 max-h-[530px] overflow-y-auto overflow-x-hidden pr-1.5 custom-vertical-scrollbar">
+                {filteredMenu.map((item) => {
+                  const missingReason = checkDishMissingIngredients(item);
 
-                    {/* THÔNG TIN CHI TIẾT MÓN (ĐƯỢC GIỚI HẠN GỌN GÀNG TRONG Ô) */}
-                    <div className="flex-1 min-w-0 pr-1">
-                      <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1 mb-1 truncate max-w-full">
-                        {getCategoryIcon(item.category)} {item.category || 'Khác'}
-                      </span>
-                      <div
-                        className="font-bold text-slate-800 truncate group-hover:text-amber-700 text-sm"
-                        title={item.name}
-                      >
-                        {item.name}
-                      </div>
-                      <div className="text-amber-600 font-extrabold mt-0.5 text-xs">
-                        {item.price.toLocaleString()} VNĐ
-                      </div>
-                    </div>
-
-                    {/* KHU VỰC NÚT BẤM (GỒM NÚT CÔNG THỨC 📝 VÀ DẤU CỘNG +, HOÀN TOÀN Ở TRONG Ô) */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {item.recipe && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRecipeModalDish(item);
-                          }}
-                          title="Xem công thức pha chế"
-                          className="w-7 h-7 bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white rounded-xl flex items-center justify-center text-xs font-bold transition shadow-2xs border border-amber-200 hover:border-amber-500"
-                        >
-                          📝
-                        </button>
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleDishCardClick(item)}
+                      className={`p-2.5 sm:p-3 border rounded-2xl transition flex items-center justify-between gap-2 relative group overflow-hidden cursor-pointer select-none min-w-0 ${
+                        missingReason
+                          ? 'border-amber-300 bg-amber-50/40 opacity-80'
+                          : 'border-gray-200 hover:border-amber-500 hover:shadow-md bg-white'
+                      }`}
+                    >
+                      {/* HÌNH ẢNH HOẶC ICON MÓN */}
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-14 h-14 object-cover rounded-xl group-hover:scale-105 transition duration-200 flex-shrink-0 border border-gray-100"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 font-bold text-xl flex-shrink-0 border border-amber-200">
+                          {getCategoryIcon(item.category)}
+                        </div>
                       )}
 
-                      <div
-                        className="w-7 h-7 rounded-xl bg-amber-50 group-hover:bg-amber-600 text-amber-700 group-hover:text-white font-black text-base flex items-center justify-center transition shadow-2xs border border-amber-200 group-hover:border-amber-600"
-                        title="Thêm vào hóa đơn"
-                      >
-                        +
+                      {/* THÔNG TIN CHI TIẾT MÓN (ĐƯỢC GIỚI HẠN GỌN GÀNG TRONG Ô) */}
+                      <div className="flex-1 min-w-0 pr-1">
+                        <div className="flex items-center gap-1 mb-1 flex-wrap">
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1 truncate max-w-full">
+                            {getCategoryIcon(item.category)} {item.category || 'Khác'}
+                          </span>
+                          {missingReason && (
+                            <span className="text-[10px] font-black text-red-700 bg-red-100 border border-red-200 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                              🟡 {missingReason}
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className="font-bold text-slate-800 truncate group-hover:text-amber-700 text-sm"
+                          title={item.name}
+                        >
+                          {item.name}
+                        </div>
+                        <div className="text-amber-600 font-extrabold mt-0.5 text-xs">
+                          {item.price.toLocaleString()} VNĐ
+                        </div>
+                      </div>
+
+                      {/* KHU VỰC NÚT BẤM (GỒM NÚT CÔNG THỨC 📝 VÀ DẤU CỘNG +, HOÀN TOÀN Ở TRONG Ô) */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {item.recipe && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRecipeModalDish(item);
+                            }}
+                            title="Xem công thức pha chế"
+                            className="w-7 h-7 bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white rounded-xl flex items-center justify-center text-xs font-bold transition shadow-2xs border border-amber-200 hover:border-amber-500"
+                          >
+                            📝
+                          </button>
+                        )}
+
+                        <div
+                          className={`w-7 h-7 rounded-xl font-black text-base flex items-center justify-center transition shadow-2xs border ${
+                            missingReason
+                              ? 'bg-slate-200 text-slate-400 border-slate-300'
+                              : 'bg-amber-50 group-hover:bg-amber-600 text-amber-700 group-hover:text-white border-amber-200 group-hover:border-amber-600'
+                          }`}
+                          title={missingReason ? missingReason : 'Thêm vào hóa đơn'}
+                        >
+                          {missingReason ? '✕' : '+'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

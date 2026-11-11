@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNotification } from './CustomNotification';
 
 export default function RecipeManagement({
   menu,
+  inventory = [],
   onAddDish,
   onUpdateDish,
   onDeleteDish,
@@ -14,6 +15,13 @@ export default function RecipeManagement({
   const [recipe, setRecipe] = useState('');
   const [image, setImage] = useState('');
 
+  // Định lượng nguyên liệu (BOM) liên kết với Kho
+  const [ingredients, setIngredients] = useState([]);
+  const [ingSearch, setIngSearch] = useState('');
+  const [ingAmount, setIngAmount] = useState('');
+  const [ingUnit, setIngUnit] = useState('g');
+  const [showIngSuggestions, setShowIngSuggestions] = useState(false);
+
   // Trạng thái món đang được chọn để chỉnh sửa (null = chế độ thêm mới)
   const [editingDish, setEditingDish] = useState(null);
 
@@ -24,10 +32,64 @@ export default function RecipeManagement({
   const [filterCategory, setFilterCategory] = useState('Tất cả');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { showSuccess, showWarning } = useNotification();
+  const { showSuccess, showWarning, showInfo } = useNotification();
 
   // Danh mục chuẩn của quán
   const CATEGORIES = ['Cà Phê', 'Trà & Trà Sữa', 'Nước Uống & Đá Xay', 'Đồ Ăn & Bánh', 'Khác'];
+
+  // Gợi ý nguyên liệu từ kho khi người dùng gõ tìm kiếm (VD: gõ 'đ', 's', 'c'...)
+  const ingSuggestions = useMemo(() => {
+    if (!ingSearch.trim()) return [];
+    const term = ingSearch.toLowerCase().trim();
+    return (inventory || []).filter((inv) => (inv?.name || '').toLowerCase().includes(term));
+  }, [ingSearch, inventory]);
+
+  // Kiểm tra xem tên nguyên liệu đang gõ có trong kho chưa
+  const isIngInInventory = useMemo(() => {
+    if (!ingSearch.trim()) return true;
+    return (inventory || []).some(
+      (inv) => (inv?.name || '').toLowerCase().trim() === ingSearch.toLowerCase().trim()
+    );
+  }, [ingSearch, inventory]);
+
+  // Thêm nguyên liệu vào danh sách định lượng của món
+  const handleAddIngredient = () => {
+    if (!ingSearch.trim()) {
+      showWarning('Vui lòng nhập tên nguyên liệu!');
+      return;
+    }
+    const amt = Number(ingAmount);
+    if (!amt || amt <= 0) {
+      showWarning('Số lượng định lượng phải lớn hơn 0!');
+      return;
+    }
+
+    const trimmedName = ingSearch.trim();
+    if (ingredients.some((it) => it.name.toLowerCase() === trimmedName.toLowerCase())) {
+      showWarning(`Nguyên liệu "${trimmedName}" đã có trong danh sách định lượng!`);
+      return;
+    }
+
+    const newIng = {
+      name: trimmedName,
+      amount: amt,
+      unit: ingUnit || 'g',
+    };
+
+    setIngredients((prev) => [...prev, newIng]);
+    if (!isIngInInventory) {
+      showInfo(
+        `Nguyên liệu "${trimmedName}" chưa có trong kho! Món này sẽ ở trạng thái [Chờ Nguyên Liệu] cho đến khi được nhập kho.`
+      );
+    }
+    setIngSearch('');
+    setIngAmount('');
+    setShowIngSuggestions(false);
+  };
+
+  const handleRemoveIngredient = (indexToRemove) => {
+    setIngredients((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
   // Chọn món vào form để chỉnh sửa
   const handleSelectDishForEdit = (dish) => {
@@ -37,6 +99,7 @@ export default function RecipeManagement({
     setCategory(dish.category || 'Cà Phê');
     setRecipe(dish.recipe || '');
     setImage(dish.image || '');
+    setIngredients(Array.isArray(dish.ingredients) ? [...dish.ingredients] : []);
 
     // Cuộn nhẹ lên đầu form trên thiết bị di động
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -50,6 +113,9 @@ export default function RecipeManagement({
     setCategory('Cà Phê');
     setRecipe('');
     setImage('');
+    setIngredients([]);
+    setIngSearch('');
+    setIngAmount('');
   };
 
   // Xử lý chọn ảnh từ máy tính & tự động nén tối ưu (kích thước chuẩn ~40-60KB, chống tràn bộ nhớ)
@@ -120,6 +186,7 @@ export default function RecipeManagement({
       category: category || 'Khác',
       recipe: recipe.trim() || 'Chưa có công thức ghi chú.',
       image: image || defaultImage,
+      ingredients: ingredients,
     };
 
     if (editingDish) {
@@ -142,12 +209,12 @@ export default function RecipeManagement({
   };
 
   // Lọc danh sách món hiển thị
-  const filteredMenu = menu.filter((item) => {
+  const filteredMenu = (Array.isArray(menu) ? menu : []).filter((item) => {
     const matchCategory =
-      filterCategory === 'Tất cả' || (item.category || 'Khác') === filterCategory;
+      filterCategory === 'Tất cả' || (item?.category || 'Khác') === filterCategory;
     const matchSearch =
       !searchTerm.trim() ||
-      item.name.toLowerCase().includes(searchTerm.toLowerCase().trim());
+      (item?.name || '').toLowerCase().includes(searchTerm.toLowerCase().trim());
     return matchCategory && matchSearch;
   });
 
@@ -292,12 +359,139 @@ export default function RecipeManagement({
                 Công thức / Ghi chú pha chế:
               </label>
               <textarea
-                rows="3"
+                rows="2"
                 value={recipe}
                 onChange={(e) => setRecipe(e.target.value)}
-                placeholder="Ví dụ: 25g bột cà phê pha phin, 30ml sữa đặc, 50ml kem béo muối biển..."
-                className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
+                placeholder="Ví dụ: 25g bột cà phê pha phin, 30ml sữa đặc, đá bi đầy ly..."
+                className="w-full border border-gray-300 p-2 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
               />
+            </div>
+
+            {/* ĐỊNH LƯỢNG NGUYÊN LIỆU TRỪ KHO TỰ ĐỘNG (BOM) */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-black text-slate-800 uppercase">
+                  📦 Định Lượng Trừ Kho ({ingredients.length}):
+                </label>
+                <span className="text-[10px] text-slate-500 font-semibold">Tự trừ kho khi Order</span>
+              </div>
+
+              {/* Danh sách nguyên liệu đã thêm vào món */}
+              {ingredients.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 pb-1">
+                  {ingredients.map((it, idx) => {
+                    const foundInInv = inventory.some(
+                      (inv) => inv.name.toLowerCase().trim() === it.name.toLowerCase().trim()
+                    );
+                    return (
+                      <span
+                        key={idx}
+                        className={`text-xs px-2.5 py-1 rounded-xl font-bold flex items-center gap-1.5 border shadow-2xs ${
+                          foundInInv
+                            ? 'bg-white text-slate-800 border-slate-200'
+                            : 'bg-amber-100 text-amber-900 border-amber-300'
+                        }`}
+                      >
+                        <span>{foundInInv ? '🟢' : '🟡'}</span>
+                        <span>{it.name}:</span>
+                        <strong className="text-amber-700">{it.amount} {it.unit}</strong>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveIngredient(idx)}
+                          className="text-slate-400 hover:text-red-600 font-bold ml-1 text-xs"
+                          title="Xóa nguyên liệu này"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-[11px] text-slate-400 italic">
+                  Chưa có định lượng. Hãy thêm các nguyên liệu dưới đây để hệ thống tự động trừ kho khi khách gọi món.
+                </div>
+              )}
+
+              {/* Ô NHẬP NGUYÊN LIỆU KÈM AUTO-COMPLETE THÔNG MINH */}
+              <div className="pt-2 border-t border-slate-200 relative">
+                <div className="grid grid-cols-12 gap-1.5">
+                  <div className="col-span-6 relative">
+                    <input
+                      type="text"
+                      value={ingSearch}
+                      onChange={(e) => {
+                        setIngSearch(e.target.value);
+                        setShowIngSuggestions(true);
+                      }}
+                      onFocus={() => setShowIngSuggestions(true)}
+                      placeholder="Gõ tên (cà phê, sữa, đường, đá...)"
+                      className="w-full p-2 text-xs border border-gray-300 rounded-xl font-semibold bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                    />
+
+                    {/* DROPDOWN GỢI Ý THÔNG MINH TỪ KHO */}
+                    {showIngSuggestions && ingSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-30 max-h-36 overflow-y-auto divide-y divide-slate-100">
+                        {ingSuggestions.map((sug) => (
+                          <div
+                            key={sug.id}
+                            onClick={() => {
+                              setIngSearch(sug.name);
+                              setIngUnit(sug.unit);
+                              setShowIngSuggestions(false);
+                            }}
+                            className="p-2 text-xs hover:bg-amber-50 cursor-pointer flex justify-between items-center"
+                          >
+                            <span className="font-bold text-slate-800 truncate pr-2">{sug.name}</span>
+                            <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                              Tồn: {sug.stock} {sug.unit}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="col-span-3">
+                    <input
+                      type="number"
+                      step="any"
+                      value={ingAmount}
+                      onChange={(e) => setIngAmount(e.target.value)}
+                      placeholder="SL (25)"
+                      className="w-full p-2 text-xs border border-gray-300 rounded-xl font-bold text-amber-700 bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="col-span-3 flex gap-1">
+                    <input
+                      type="text"
+                      value={ingUnit}
+                      onChange={(e) => setIngUnit(e.target.value)}
+                      placeholder="ĐVT"
+                      className="w-full p-2 text-xs border border-gray-300 rounded-xl font-bold text-center bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddIngredient}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-black text-xs px-2.5 rounded-xl transition shadow-xs shrink-0 cursor-pointer"
+                      title="Thêm nguyên liệu này"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* THÔNG BÁO NẾU NGUYÊN LIỆU MỚI CHƯA CÓ TRONG KHO */}
+                {ingSearch.trim() && !isIngInInventory && (
+                  <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-900 flex items-center gap-1.5">
+                    <span>💡</span>
+                    <span>
+                      Nguyên liệu <strong>"{ingSearch}"</strong> chưa có trong kho! Món sẽ vào danh sách <strong>Chờ Nguyên Liệu</strong> và tạo nhắc nhở nhập kho.
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* NÚT SUBMIT */}
@@ -436,10 +630,27 @@ export default function RecipeManagement({
                         }}
                       />
                       <div className="pr-5 min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
                             {item.category || 'Món'}
                           </span>
+                          {Array.isArray(item.ingredients) && item.ingredients.length > 0 && (
+                            item.ingredients.some((ing) => {
+                              const ingName = (ing?.name || '').toLowerCase().trim();
+                              const found = (inventory || []).find(
+                                (inv) => (inv?.name || '').toLowerCase().trim() === ingName
+                              );
+                              return !found || found.stock <= 0;
+                            }) ? (
+                              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                🟡 Chờ NL
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                🟢 Sẵn sàng
+                              </span>
+                            )
+                          )}
                           {isSelectedForEdit && (
                             <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500 text-white animate-pulse">
                               Đang sửa
@@ -452,6 +663,15 @@ export default function RecipeManagement({
                         <p className="text-amber-600 font-black text-xs mt-0.5">
                           {Number(item.price).toLocaleString()} VNĐ
                         </p>
+                        {Array.isArray(item.ingredients) && item.ingredients.length > 0 && (
+                          <div
+                            className="text-[10px] text-slate-400 truncate mt-0.5"
+                            title={item.ingredients.map((i) => `${i.amount}${i.unit || ''} ${i.name || ''}`).join(', ')}
+                          >
+                            📦 {item.ingredients.length} định lượng (
+                            {item.ingredients.map((i) => `${i.amount}${i.unit || ''} ${(i?.name || '').split(' ')[0]}`).join(', ')})
+                          </div>
+                        )}
                       </div>
                     </div>
 

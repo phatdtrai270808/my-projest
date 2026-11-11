@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNotification } from './CustomNotification';
 
 // Dữ liệu mẫu khởi tạo phong phú cho Lịch sử bàn đã dùng
 const INITIAL_TABLE_USAGE = [
@@ -163,9 +164,22 @@ const INITIAL_RESERVATIONS = [
   },
 ];
 
-export default function TableHistory() {
+export default function TableHistory({
+  orders = [],
+  setOrders,
+  menu = [],
+  inventory = [],
+  onDeleteOrder,
+  onRefreshOrders,
+}) {
+  const { showSuccess, showWarning, showConfirm } = useNotification();
+
   // Tab con: 'USAGE' (Bàn đã dùng) hoặc 'RESERVATION' (Bàn đặt trước)
   const [subTab, setSubTab] = useState('USAGE');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Hóa đơn được chọn để in lại
+  const [selectedInvoiceToPrint, setSelectedInvoiceToPrint] = useState(null);
 
   // Dữ liệu Lịch sử bàn đã dùng
   const [usageList, setUsageList] = useState(() => {
@@ -180,6 +194,169 @@ export default function TableHistory() {
     }
     return INITIAL_TABLE_USAGE;
   });
+
+  // Hàm làm mới dữ liệu lịch sử bàn (Refresh)
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const savedUsage = localStorage.getItem('POS_TABLE_USAGE_HISTORY');
+      if (savedUsage) {
+        const parsed = JSON.parse(savedUsage);
+        if (Array.isArray(parsed)) setUsageList(parsed);
+      }
+      const savedRes = localStorage.getItem('POS_RESERVATION_HISTORY');
+      if (savedRes) {
+        const parsed = JSON.parse(savedRes);
+        if (Array.isArray(parsed)) setReservationList(parsed);
+      }
+    } catch (e) {
+      console.warn('Lỗi đọc lại localStorage:', e);
+    }
+
+    if (onRefreshOrders) {
+      try {
+        await onRefreshOrders();
+      } catch (err) {
+        console.warn('Lỗi refresh backend:', err);
+      }
+    }
+
+    setTimeout(() => {
+      setIsRefreshing(false);
+      showSuccess('Đã làm mới dữ liệu lịch sử bàn và đơn đặt bàn thành công!');
+    }, 350);
+  };
+
+  // Hàm xóa lượt bàn đã dùng: TRỪ DOANH THU & CHUYỂN NGUYÊN LIỆU VÀO KHO HAO HỤT
+  const handleDeleteUsage = (usage) => {
+    showConfirm({
+      title: `Xác nhận xóa lịch sử bàn "${usage.tableName}"?`,
+      message: `Bàn này đã thanh toán ${(usage.total || 0).toLocaleString()} VNĐ. Khi xác nhận xóa:\n1. Số tiền ${(usage.total || 0).toLocaleString()}đ sẽ bị TRỪ TRỰC TIẾP KHỎI DOANH THU.\n2. Toàn bộ nguyên liệu đã tiêu hao (${usage.items?.length || 0} món) sẽ được CHUYỂN VÀO MỤC QUẢN LÝ KHO HAO HỤT.\nBạn có chắc chắn muốn xóa không?`,
+      confirmText: 'Xác nhận xóa & trừ doanh thu',
+      cancelText: 'Hủy bỏ',
+      type: 'danger',
+      onConfirm: () => {
+        // 1. Xóa khỏi state nội bộ
+        setUsageList((prev) => {
+          const updated = prev.filter((u) => u.id !== usage.id && u.orderId !== usage.orderId);
+          try {
+            localStorage.setItem('POS_TABLE_USAGE_HISTORY', JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+
+        // 2. Gọi onDeleteOrder để trừ doanh thu và ghi nhận hao hụt kho
+        if (onDeleteOrder) {
+          onDeleteOrder(usage);
+        } else {
+          // Fallback nếu chưa truyền onDeleteOrder từ ngoài
+          if (setOrders) {
+            setOrders((prev) =>
+              prev.filter(
+                (o) =>
+                  o.id !== usage.orderId &&
+                  o.id !== usage.id &&
+                  o.code !== usage.orderId
+              )
+            );
+          }
+
+          // Ghi nhận hao hụt vào POS_AUDIT_HISTORY
+          const wasted = [];
+          if (Array.isArray(usage.items)) {
+            usage.items.forEach((it) => {
+              const dish = menu.find((m) => m.name === it.name || m.id === it.id);
+              const ings = (dish && dish.ingredients) || it.ingredients || [];
+              ings.forEach((ing) => {
+                const qty = Number(it.qty) || 1;
+                const ingAmount = (Number(ing.amount) || 1) * qty;
+                const invItem = inventory.find(
+                  (inv) => inv.name.toLowerCase().trim() === ing.name.toLowerCase().trim()
+                );
+                wasted.push({
+                  id: `WASTE-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+                  date: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+                  ingName: ing.name,
+                  theoryStock: invItem ? invItem.stock : 0,
+                  actualStock: invItem ? invItem.stock : 0,
+                  diff: -ingAmount,
+                  unit: ing.unit || invItem?.unit || 'g/ml',
+                  lossAmount: Math.round(ingAmount * (invItem?.unitCost || 120)),
+                  reason: `Hao hụt do XÓA BÀN: ${usage.tableName} (Đơn: ${usage.orderId || usage.id})`,
+                  status: 'ABNORMAL',
+                });
+              });
+            });
+          }
+          if (wasted.length > 0) {
+            try {
+              const raw = localStorage.getItem('POS_AUDIT_HISTORY');
+              const cur = raw ? JSON.parse(raw) : [];
+              localStorage.setItem('POS_AUDIT_HISTORY', JSON.stringify([...wasted, ...cur]));
+            } catch (e) {}
+          }
+        }
+
+        showSuccess(
+          `Đã xóa lượt bàn "${usage.tableName}"! Đã giảm ${(usage.total || 0).toLocaleString()}đ doanh thu và chuyển nguyên liệu vào Quản Lý Kho Hao Hụt.`
+        );
+      },
+    });
+  };
+
+  // Hàm xóa lịch hẹn đặt trước
+  const handleDeleteReservation = (res) => {
+    showConfirm({
+      title: `Xóa lịch đặt bàn của "${res.customerName}"?`,
+      message: `Bạn có chắc chắn muốn xóa lịch hẹn bàn ${res.tableName} lúc ${res.reserveTime} ngày ${res.reserveDate} của khách "${res.customerName}" không?`,
+      confirmText: 'Xác nhận xóa',
+      cancelText: 'Giữ lại',
+      type: 'danger',
+      onConfirm: () => {
+        setReservationList((prev) => {
+          const updated = prev.filter((r) => r.id !== res.id);
+          try {
+            localStorage.setItem('POS_RESERVATION_HISTORY', JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+        showSuccess(`Đã xóa lịch đặt bàn của khách "${res.customerName}"!`);
+      },
+    });
+  };
+
+  // Tự động đồng bộ hóa đơn từ hệ thống POS vào danh sách bàn đã phục vụ
+  useEffect(() => {
+    if (Array.isArray(orders) && orders.length > 0) {
+      setUsageList((prev) => {
+        let updated = [...prev];
+        orders.forEach((ord) => {
+          const ordId = ord.id || ord.code;
+          if (ordId && !updated.some((u) => u.orderId === ordId || u.id === ordId)) {
+            updated.unshift({
+              id: ordId,
+              tableId: ord.tableId || 'T1',
+              tableName: ord.tableName || 'Bàn phục vụ',
+              area: ord.area || (ord.tableName?.includes('Phòng lạnh') ? 'Phòng lạnh' : 'Phòng thường'),
+              seatedAt: ord.createdAt || new Date().toLocaleString('vi-VN'),
+              completedAt: ord.createdAt || new Date().toLocaleString('vi-VN'),
+              durationMinutes: 45,
+              orderId: ordId,
+              items: ord.items || [],
+              totalItemsCount: (ord.items || []).reduce((s, it) => s + (it.qty || 1), 0),
+              subTotal: (ord.totalAmount || ord.total || 0) + (ord.discount || 0),
+              discount: ord.discount || 0,
+              total: ord.totalAmount || ord.total || 0,
+              paymentMethod: ord.paymentMethod || 'CASH',
+              orderNote: ord.orderNote || 'Hóa đơn thanh toán POS',
+              staffName: ord.staffName || 'Tiến Phát',
+            });
+          }
+        });
+        return updated;
+      });
+    }
+  }, [orders]);
 
   // Dữ liệu Lịch sử đặt bàn
   const [reservationList, setReservationList] = useState(() => {
@@ -424,18 +601,32 @@ export default function TableHistory() {
           )}
         </div>
 
-        {/* Nút Mở rộng / Thu gọn tất cả */}
-        <button
-          type="button"
-          onClick={toggleExpandAll}
-          className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3.5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-        >
-          <span>
-            {(subTab === 'USAGE' ? filteredUsageList : filteredReservationList).every((item) => expandedIds[item.id])
-              ? '▲ Thu gọn tất cả'
-              : '▼ Mở rộng tất cả'}
-          </span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Nút Làm Mới (Refresh) */}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3.5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Làm mới lại dữ liệu lịch sử bàn và đơn đặt bàn từ hệ thống"
+          >
+            <span className={isRefreshing ? 'animate-spin inline-block' : 'inline-block'}>🔄</span>
+            <span>{isRefreshing ? 'Đang tải...' : 'Làm Mới (Refresh)'}</span>
+          </button>
+
+          {/* Nút Mở rộng / Thu gọn tất cả */}
+          <button
+            type="button"
+            onClick={toggleExpandAll}
+            className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3.5 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>
+              {(subTab === 'USAGE' ? filteredUsageList : filteredReservationList).every((item) => expandedIds[item.id])
+                ? '▲ Thu gọn tất cả'
+                : '▼ Mở rộng tất cả'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* ======================================================== */}
@@ -499,7 +690,7 @@ export default function TableHistory() {
                     </div>
 
                     {/* Tổng tiền & Mũi tên Accordion */}
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
                       <div className="text-right">
                         <div className="text-sm sm:text-base font-black text-amber-700">
                           {usage.total.toLocaleString()}đ
@@ -508,6 +699,19 @@ export default function TableHistory() {
                           {usage.paymentMethod === 'TRANSFER' ? '💳 MBBank QR' : '💵 Tiền mặt'}
                         </div>
                       </div>
+
+                      {/* Nút xóa nhanh bàn đã phục vụ */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteUsage(usage);
+                        }}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white flex items-center justify-center text-xs transition border border-red-200 cursor-pointer shadow-2xs"
+                        title="Xóa lượt bàn này (Trừ doanh thu & Ghi nhận hao hụt kho)"
+                      >
+                        🗑️
+                      </button>
 
                       <div
                         className={`w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs text-slate-500 transition-transform duration-200 ${
@@ -526,9 +730,29 @@ export default function TableHistory() {
                     <div className="p-4 bg-slate-50/50 space-y-4 text-xs animate-fadeIn">
                       {/* Bảng chi tiết từng món đã gọi và thời gian gọi món */}
                       <div>
-                        <div className="font-bold text-slate-700 uppercase mb-2 flex items-center justify-between">
+                        <div className="font-bold text-slate-700 uppercase mb-2 flex items-center justify-between flex-wrap gap-2">
                           <span>📋 Chi tiết món ăn & thời gian gọi:</span>
-                          <span className="text-slate-400 font-normal">Mã đơn: {usage.orderId}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-slate-500 font-semibold text-xs">Mã đơn: {usage.orderId}</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedInvoiceToPrint(usage)}
+                              className="bg-amber-100 hover:bg-amber-600 text-amber-900 hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs border border-amber-300 cursor-pointer"
+                              title="In lại hóa đơn thanh toán cho bàn này"
+                            >
+                              <span>🖨️</span>
+                              <span>In Hóa Đơn</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUsage(usage)}
+                              className="bg-red-50 hover:bg-red-600 text-red-700 hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs border border-red-300 cursor-pointer"
+                              title="Xóa lượt bàn này khỏi lịch sử, trừ doanh thu và chuyển nguyên liệu vào kho hao hụt"
+                            >
+                              <span>🗑️</span>
+                              <span>Xóa Bàn (Trừ Doanh Thu & Kho)</span>
+                            </button>
+                          </div>
                         </div>
 
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -696,11 +920,24 @@ export default function TableHistory() {
                       </div>
                     </div>
 
-                    {/* Trạng thái & Mũi tên Accordion */}
-                    <div className="flex items-center gap-2.5 shrink-0">
+                    {/* Trạng thái, nút xóa & Mũi tên Accordion */}
+                    <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border ${badge.classes}`}>
                         {badge.label}
                       </span>
+
+                      {/* Nút xóa lịch hẹn */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteReservation(res);
+                        }}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white flex items-center justify-center text-xs transition border border-red-200 cursor-pointer shadow-2xs"
+                        title="Xóa lịch hẹn đặt bàn này"
+                      >
+                        🗑️
+                      </button>
 
                       <div
                         className={`w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs text-slate-500 transition-transform duration-200 ${
@@ -766,12 +1003,118 @@ export default function TableHistory() {
                           {res.note || <span className="italic text-slate-400">Không có yêu cầu đặc biệt</span>}
                         </span>
                       </div>
+
+                      {/* Nút xóa trong chi tiết đặt bàn */}
+                      <div className="flex justify-end pt-2 border-t border-purple-100">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReservation(res)}
+                          className="bg-red-50 hover:bg-red-600 text-red-700 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-2xs border border-red-300 cursor-pointer"
+                          title="Xóa lịch hẹn đặt bàn này khỏi hệ thống"
+                        >
+                          <span>🗑️</span>
+                          <span>Xóa Lịch Đặt Này</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
               );
             })
           )}
+        </div>
+      )}
+      {/* MODAL IN LẠI HÓA ĐƠN THANH TOÁN */}
+      {selectedInvoiceToPrint && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+            <div className="text-center pb-4 border-b border-dashed border-slate-300">
+              <h3 className="font-black text-lg text-slate-800 uppercase tracking-wider">Tiến Phát Café</h3>
+              <p className="text-xs text-slate-500">TP. Hồ Chí Minh - Hotline: 0988.xxx.xxx</p>
+              <div className="mt-2 text-xs font-bold bg-amber-50 text-amber-800 py-1 px-3 rounded-lg inline-block border border-amber-200">
+                🧾 HÓA ĐƠN THANH TOÁN
+              </div>
+            </div>
+
+            <div className="py-3 text-xs space-y-1.5 border-b border-dashed border-slate-300 text-slate-600">
+              <div className="flex justify-between">
+                <span>Mã đơn:</span>
+                <span className="font-bold text-slate-800">{selectedInvoiceToPrint.orderId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Vị trí:</span>
+                <span className="font-bold text-slate-800">{selectedInvoiceToPrint.tableName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Thời gian:</span>
+                <span>{selectedInvoiceToPrint.completedAt}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Thu ngân:</span>
+                <span>{selectedInvoiceToPrint.staffName}</span>
+              </div>
+            </div>
+
+            {/* Danh sách món */}
+            <div className="py-3 max-h-48 overflow-y-auto space-y-2 border-b border-dashed border-slate-300">
+              {selectedInvoiceToPrint.items.map((it, idx) => (
+                <div key={idx} className="flex justify-between text-xs">
+                  <div className="flex-1 pr-2">
+                    <div className="font-bold text-slate-800">{it.name}</div>
+                    <div className="text-[10px] text-slate-400">
+                      {it.qty} x {it.price?.toLocaleString()}đ
+                      {it.itemNote && <span className="text-amber-700 ml-1">({it.itemNote})</span>}
+                    </div>
+                  </div>
+                  <div className="font-bold text-slate-800">
+                    {((it.price || 0) * (it.qty || 1)).toLocaleString()}đ
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tính tiền */}
+            <div className="py-3 space-y-1.5 text-xs border-b border-dashed border-slate-300">
+              <div className="flex justify-between text-slate-500">
+                <span>Tạm tính:</span>
+                <span>{selectedInvoiceToPrint.subTotal?.toLocaleString()}đ</span>
+              </div>
+              {selectedInvoiceToPrint.discount > 0 && (
+                <div className="flex justify-between text-red-500">
+                  <span>Giảm giá:</span>
+                  <span>-{selectedInvoiceToPrint.discount?.toLocaleString()}đ</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm font-black text-slate-900 pt-1">
+                <span>TỔNG CỘNG:</span>
+                <span className="text-amber-700 text-base">{selectedInvoiceToPrint.total?.toLocaleString()}đ</span>
+              </div>
+              <div className="text-[11px] text-slate-400 text-right">
+                Phương thức: {selectedInvoiceToPrint.paymentMethod === 'TRANSFER' ? 'Chuyển khoản QR' : 'Tiền mặt'}
+              </div>
+            </div>
+
+            <div className="text-center text-[11px] text-slate-400 italic pt-3">
+              Cảm ơn quý khách & Hẹn gặp lại!
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setSelectedInvoiceToPrint(null)}
+                className="flex-1 py-2 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs hover:bg-slate-100 transition"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5"
+              >
+                <span>🖨️ In Ngay</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
