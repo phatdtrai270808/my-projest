@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import PosArea from './components/PosArea';
+import HighlandsSelfService from './components/HighlandsSelfService';
+import SaaSRoadmapModal from './components/SaaSRoadmapModal';
 import ShiftManagement from './components/ShiftManagement';
 import Payroll from './components/Payroll';
 import RecipeManagement from './components/RecipeManagement';
 import TableHistory from './components/TableHistory';
 import RevenueAnalytics from './components/RevenueAnalytics';
 import InventoryManagement from './components/InventoryManagement';
-import { INITIAL_TABLES, INITIAL_MENU, INITIAL_STAFF, INITIAL_INVENTORY } from './data/initialData';
+import { INITIAL_TABLES, INITIAL_MENU, INITIAL_STAFF, INITIAL_INVENTORY, DEMO_MENU, DEMO_INVENTORY } from './data/initialData';
 import { NotificationProvider, useNotification } from './components/CustomNotification';
 import {
   checkBackendStatus,
@@ -20,7 +22,23 @@ import {
 } from './services/api';
 
 function MainApp() {
-  const [activeTab, setActiveTab] = useState('pos');
+  // Chế độ mô hình vận hành: 'SELF_SERVICE' (Highlands Tự Phục Vụ) hoặc 'TRADITIONAL' (Phục Vụ Tại Bàn)
+  const [operatingMode, setOperatingMode] = useState(() => {
+    return localStorage.getItem('POS_OPERATING_MODE') || 'SELF_SERVICE';
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedMode = localStorage.getItem('POS_OPERATING_MODE') || 'SELF_SERVICE';
+    return savedMode === 'SELF_SERVICE' ? 'selfService' : 'pos';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('POS_OPERATING_MODE', operatingMode);
+  }, [operatingMode]);
+
+  // Modal Bản kế hoạch kinh doanh & phát triển thị trường SaaS
+  const [showRoadmapModal, setShowRoadmapModal] = useState(false);
+
   const [tables, setTables] = useState(() => {
     const saved = localStorage.getItem('POS_TABLES_DATA');
     return saved ? JSON.parse(saved) : INITIAL_TABLES;
@@ -85,14 +103,13 @@ function MainApp() {
     return () => clearInterval(timer);
   }, []);
 
-  // Tải danh sách menu từ localStorage nếu có, nếu chưa có sẽ lấy INITIAL_MENU chuẩn
+  // Tải danh sách menu từ localStorage nếu có, nếu chưa có sẽ mặc định mảng rỗng []
   const [menu, setMenu] = useState(() => {
     try {
       const savedMenu = localStorage.getItem('POS_MENU_DATA');
       if (savedMenu) {
         const parsed = JSON.parse(savedMenu);
-        // Nếu đã có thực đơn đầy đủ (từ 10 món trở lên), dùng dữ liệu này; nếu rỗng thì nạp 25 món khảo sát
-        if (Array.isArray(parsed) && parsed.length >= 10) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn(e);
@@ -101,10 +118,10 @@ function MainApp() {
   });
 
   const handleResetMenu = () => {
-    showConfirm('Bạn có chắc muốn khôi phục lại toàn bộ 25 món thực đơn chuẩn được khảo sát không?', () => {
-      setMenu(INITIAL_MENU);
-      localStorage.setItem('POS_MENU_DATA', JSON.stringify(INITIAL_MENU));
-      showSuccess('Đã khôi phục thành công 25 món thực đơn chuẩn!');
+    showConfirm('Bạn có chắc muốn nạp lại 25 món thực đơn mẫu khảo sát không?', () => {
+      setMenu(DEMO_MENU);
+      localStorage.setItem('POS_MENU_DATA', JSON.stringify(DEMO_MENU));
+      showSuccess('Đã nạp thành công 25 món thực đơn mẫu chuẩn!');
     });
   };
 
@@ -115,13 +132,13 @@ function MainApp() {
   });
   const [shiftLogs, setShiftLogs] = useState([]);
 
-  // Quản lý Kho nguyên vật liệu khởi tạo
+  // Quản lý Kho nguyên vật liệu (Mặc định rỗng [])
   const [inventory, setInventory] = useState(() => {
     try {
       const saved = localStorage.getItem('POS_INVENTORY_DATA');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn(e);
@@ -162,7 +179,69 @@ function MainApp() {
     });
   };
 
-  const { showSuccess, showConfirm } = useNotification();
+  const { showSuccess, showConfirm, showInfo } = useNotification();
+
+  // Hàm chuyển đổi chế độ vận hành (Dùng công tắc gạt đa năng SaaS)
+  const handleSwitchOperatingMode = (newMode) => {
+    setOperatingMode(newMode);
+    if (newMode === 'SELF_SERVICE') {
+      setActiveTab('selfService');
+      if (showInfo) showInfo('⚡ Đã chuyển sang mô hình: Tự Phục Vụ Chuỗi (Highlands QSR)!');
+    } else {
+      setActiveTab('pos');
+      if (showInfo) showInfo('☕ Đã chuyển sang mô hình: Phục Vụ Tại Bàn Truyền Thống!');
+    }
+  };
+
+  // 1. Hàm Xóa Trắng Toàn Bộ Dữ Liệu (Clean Blank Slate theo yêu cầu)
+  const handleClearAllData = () => {
+    showConfirm({
+      title: 'Làm Trống Dữ Liệu Toàn Hệ Thống',
+      message: 'Bạn có chắc chắn muốn làm trống toàn bộ dữ liệu (Món ăn, Kho, Đơn hàng, Doanh thu = 0đ) để bắt đầu thảo luận từ con số 0 cùng nhóm không?',
+      confirmText: 'Xác nhận xóa trắng',
+      cancelText: 'Giữ lại',
+      type: 'danger',
+      onConfirm: () => {
+        setMenu([]);
+        setInventory([]);
+        setOrders([]);
+        setTables((prev) => prev.map((t) => ({ ...t, occupied: false, groupId: null, isReserved: false })));
+        try {
+          localStorage.setItem('POS_MENU_DATA', JSON.stringify([]));
+          localStorage.setItem('POS_INVENTORY_DATA', JSON.stringify([]));
+          localStorage.setItem('POS_ORDERS_DATA', JSON.stringify([]));
+          localStorage.setItem('POS_CARTS_DATA', JSON.stringify({}));
+          localStorage.setItem('POS_NOTES_DATA', JSON.stringify({}));
+          localStorage.setItem('POS_TABLE_USAGE_HISTORY', JSON.stringify([]));
+          localStorage.setItem('POS_RESERVATION_HISTORY', JSON.stringify([]));
+          localStorage.setItem('HIGHLANDS_KDS_ORDERS', JSON.stringify([]));
+          localStorage.setItem('POS_EXPENSE_HISTORY', JSON.stringify([]));
+          localStorage.setItem('POS_AUDIT_HISTORY', JSON.stringify([]));
+        } catch (e) {}
+        showSuccess('🧹 Đã làm trống toàn bộ dữ liệu! Toàn bộ Doanh thu = 0đ, Thực đơn rỗng để nhóm bạn tự thiết lập từ số 0.');
+      },
+    });
+  };
+
+  // 2. Hàm Nạp Lại Thực Đơn Khảo Sát Mẫu Chuẩn (25 Món & 19 Nguyên Liệu Kho)
+  const handleLoadDemoData = () => {
+    showConfirm({
+      title: 'Nạp Lại Dữ Liệu Mẫu Khảo Sát',
+      message: 'Hệ thống sẽ nạp lại 25 món thực đơn khảo sát kèm công thức pha chế và kho 19 nguyên liệu chuẩn. Bạn có muốn nạp không?',
+      confirmText: 'Nạp dữ liệu mẫu',
+      cancelText: 'Hủy bỏ',
+      type: 'info',
+      onConfirm: () => {
+        setMenu(DEMO_MENU);
+        setInventory(DEMO_INVENTORY);
+        try {
+          localStorage.setItem('POS_MENU_DATA', JSON.stringify(DEMO_MENU));
+          localStorage.setItem('POS_INVENTORY_DATA', JSON.stringify(DEMO_INVENTORY));
+        } catch (e) {}
+        showSuccess('🔄 Đã nạp thành công 25 món thực đơn khảo sát và kho nguyên liệu chuẩn!');
+      },
+    });
+  };
 
   // Mỗi khi menu thay đổi, tự động lưu vào localStorage vĩnh viễn (kèm cơ chế phòng vệ chống tràn quota)
   useEffect(() => {
@@ -371,25 +450,42 @@ function MainApp() {
     setShiftLogs((prev) => [newLog, ...prev]);
   };
 
-  // Danh mục 4 Tab chức năng
+  // Danh mục các Tab chức năng thích ứng tự động theo Mô hình vận hành (SaaS Dynamic Tabs)
   const navItems = [
-    {
-      id: 'pos',
-      label: 'Sơ Đồ Bàn & Order',
-      icon: '🛒',
-      desc: 'Bán hàng, gộp bàn & hóa đơn',
-    },
-    {
-      id: 'tableHistory',
-      label: 'Lịch Sử Bàn & Hóa Đơn',
-      icon: '🕒',
-      desc: 'Bàn phục vụ & in lại bill',
-    },
+    ...(operatingMode === 'SELF_SERVICE'
+      ? [
+          {
+            id: 'selfService',
+            label: 'Quầy Tự Phục Vụ',
+            icon: '🛎️',
+            desc: 'Order quầy, Thẻ rung & KDS Barista',
+          },
+          {
+            id: 'tableHistory',
+            label: 'Lịch Sử Giao Nhận & Thẻ',
+            icon: '📋',
+            desc: 'Số thẻ rung & in lại bill',
+          },
+        ]
+      : [
+          {
+            id: 'pos',
+            label: 'Sơ Đồ Bàn & Order',
+            icon: '☕',
+            desc: 'Bán hàng theo bàn & gộp bàn',
+          },
+          {
+            id: 'tableHistory',
+            label: 'Lịch Sử Bàn & Hóa Đơn',
+            icon: '🕒',
+            desc: 'Bàn phục vụ & in lại bill',
+          },
+        ]),
     {
       id: 'revenue',
-      label: 'Doanh Thu 12 Tháng',
+      label: 'Báo Cáo Doanh Thu',
       icon: '📊',
-      desc: 'Lời/lỗ 12 tháng & biểu đồ',
+      desc: 'Ngày, Tuần, Tháng, Năm, Giờ vàng',
     },
     {
       id: 'inventory',
@@ -565,6 +661,74 @@ function MainApp() {
             </div>
           </div>
 
+          {/* CÔNG TẮC GẠT CHUYỂN ĐỔI MÔ HÌNH VẬN HÀNH (SaaS DUAL-MODE SWITCHER) */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/90 shadow-inner">
+              <span className="text-[10px] font-black uppercase text-slate-500 px-2 hidden sm:inline-block">
+                Mô Hình Quán:
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSwitchOperatingMode('SELF_SERVICE')}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 ${
+                  operatingMode === 'SELF_SERVICE'
+                    ? 'bg-[#8B181B] text-white shadow-md font-black ring-2 ring-red-300'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+                title="Chuyển sang Mô hình Tự Phục Vụ Highlands (Thẻ rung điện tử & KDS Barista)"
+              >
+                <span>🛎️</span>
+                <span>Tự Phục Vụ (Highlands)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSwitchOperatingMode('TRADITIONAL')}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 ${
+                  operatingMode === 'TRADITIONAL'
+                    ? 'bg-amber-600 text-white shadow-md font-black ring-2 ring-amber-300'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+                title="Chuyển sang Mô hình Phục Vụ Tại Bàn (Sơ đồ bàn, Gộp bàn & Đặt bàn)"
+              >
+                <span>☕</span>
+                <span>Phục Vụ Tại Bàn</span>
+              </button>
+            </div>
+
+            {/* NÚT LÀM TRỐNG DỮ LIỆU (RESET VỀ 0) */}
+            <button
+              type="button"
+              onClick={handleClearAllData}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 px-2.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition active:scale-95"
+              title="Làm trống toàn bộ thực đơn, kho, đơn hàng và doanh thu về 0đ để bắt đầu thảo luận từ số 0"
+            >
+              <span>🧹</span>
+              <span className="hidden xl:inline">Làm Trống (Về 0)</span>
+            </button>
+
+            {/* NÚT NẠP DỮ LIỆU MẪU (25 MÓN) */}
+            <button
+              type="button"
+              onClick={handleLoadDemoData}
+              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition active:scale-95"
+              title="Nạp lại thực đơn mẫu 25 món khảo sát và 19 nguyên liệu kho chuẩn"
+            >
+              <span>🔄</span>
+              <span className="hidden xl:inline">Nạp Mẫu 25 Món</span>
+            </button>
+
+            {/* NÚT MỞ BẢN KẾ HOẠCH PHÁT TRIỂN THỊ TRƯỜNG SAAS */}
+            <button
+              type="button"
+              onClick={() => setShowRoadmapModal(true)}
+              className="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-400/40 px-3 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95"
+              title="Xem Bản Kế Hoạch Thương Mại Hóa & Phát Triển Thị Trường SaaS"
+            >
+              <span>💼</span>
+              <span className="hidden sm:inline">Kế Hoạch Thị Trường</span>
+            </button>
+          </div>
+
           {/* Góc phải Topbar: Trạng thái Supabase, Đồng hồ & Quán Café Info */}
           <div className="flex items-center gap-3 text-xs">
             {backendStatus.online ? (
@@ -600,6 +764,19 @@ function MainApp() {
         {/* Nội dung tương ứng với từng Tab */}
         <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto">
           <div className="bg-white rounded-3xl shadow-xl p-4 md:p-6 border border-slate-200/80">
+            {activeTab === 'selfService' && (
+              <HighlandsSelfService
+                menu={menu}
+                inventory={inventory}
+                staffList={staffList}
+                orders={orders}
+                tables={tables}
+                setTables={setTables}
+                onCompleteOrder={handleCompleteOrder}
+                onDeductInventory={handleDeductInventory}
+                onSwitchToTraditionalPos={() => handleSwitchOperatingMode('TRADITIONAL')}
+              />
+            )}
             {activeTab === 'pos' && (
               <PosArea
                 tables={tables}
@@ -610,6 +787,7 @@ function MainApp() {
                 inventory={inventory}
                 onCompleteOrder={handleCompleteOrder}
                 onDeductInventory={handleDeductInventory}
+                onSwitchToSelfService={() => handleSwitchOperatingMode('SELF_SERVICE')}
               />
             )}
             {activeTab === 'tableHistory' && (
@@ -618,6 +796,7 @@ function MainApp() {
                 setOrders={setOrders}
                 menu={menu}
                 inventory={inventory}
+                operatingMode={operatingMode}
                 onDeleteOrder={handleDeleteOrderAndRecordWastage}
                 onRefreshOrders={handleRefreshAllData}
               />
@@ -653,6 +832,12 @@ function MainApp() {
           </div>
         </main>
       </div>
+
+      {/* Modal Kế Hoạch Thương Mại Hóa & Phát Triển Thị Trường SaaS */}
+      <SaaSRoadmapModal
+        isOpen={showRoadmapModal}
+        onClose={() => setShowRoadmapModal(false)}
+      />
     </div>
   );
 }

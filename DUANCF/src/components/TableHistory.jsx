@@ -169,6 +169,7 @@ export default function TableHistory({
   setOrders,
   menu = [],
   inventory = [],
+  operatingMode = 'SELF_SERVICE',
   onDeleteOrder,
   onRefreshOrders,
 }) {
@@ -181,18 +182,18 @@ export default function TableHistory({
   // Hóa đơn được chọn để in lại
   const [selectedInvoiceToPrint, setSelectedInvoiceToPrint] = useState(null);
 
-  // Dữ liệu Lịch sử bàn đã dùng
+  // Dữ liệu Lịch sử bàn đã dùng (mặc định rỗng để nhóm tự tạo và kiểm tra)
   const [usageList, setUsageList] = useState(() => {
     try {
       const saved = localStorage.getItem('POS_TABLE_USAGE_HISTORY');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn(e);
     }
-    return INITIAL_TABLE_USAGE;
+    return [];
   });
 
   // Hàm làm mới dữ liệu lịch sử bàn (Refresh)
@@ -358,18 +359,18 @@ export default function TableHistory({
     }
   }, [orders]);
 
-  // Dữ liệu Lịch sử đặt bàn
+  // Dữ liệu Lịch sử đặt bàn (mặc định rỗng)
   const [reservationList, setReservationList] = useState(() => {
     try {
       const saved = localStorage.getItem('POS_RESERVATION_HISTORY');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn(e);
     }
-    return INITIAL_RESERVATIONS;
+    return [];
   });
 
   // Lưu tự động vào localStorage
@@ -464,13 +465,17 @@ export default function TableHistory({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🕒</span>
+              <span className="text-2xl">{operatingMode === 'SELF_SERVICE' ? '📋' : '🕒'}</span>
               <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-                Lịch Sử Bàn & Nhật Ký Hoạt Động
+                {operatingMode === 'SELF_SERVICE'
+                  ? 'Lịch Sử Giao Nhận & Thẻ Rung (Highlands QSR)'
+                  : 'Lịch Sử Bàn & Nhật Ký Hoạt Động'}
               </h1>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Theo dõi chi tiết thời lượng sử dụng bàn, từng món được gọi và lịch sử khách đặt bàn trước
+              {operatingMode === 'SELF_SERVICE'
+                ? 'Theo dõi chi tiết các lượt cấp thẻ rung, thời gian chờ lấy nước và hóa đơn đã phục vụ'
+                : 'Theo dõi chi tiết thời lượng sử dụng bàn, từng món được gọi và lịch sử khách đặt bàn trước'}
             </p>
           </div>
 
@@ -513,7 +518,11 @@ export default function TableHistory({
                 : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-t-xl'
             }`}
           >
-            <span>🍵 1. Bàn Đã Phục Vụ</span>
+            <span>
+              {operatingMode === 'SELF_SERVICE'
+                ? '🛎️ 1. Đơn Thẻ Rung & Giao Nhận'
+                : '🍵 1. Bàn Đã Phục Vụ'}
+            </span>
             <span
               className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                 subTab === 'USAGE' ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-700'
@@ -532,7 +541,11 @@ export default function TableHistory({
                 : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-t-xl'
             }`}
           >
-            <span>🟣 2. Lịch Sử Bàn Đặt Trước</span>
+            <span>
+              {operatingMode === 'SELF_SERVICE'
+                ? '📅 2. Khách Hẹn Nhóm / Đặt Chỗ'
+                : '🟣 2. Lịch Sử Bàn Đặt Trước'}
+            </span>
             <span
               className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                 subTab === 'RESERVATION' ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-700'

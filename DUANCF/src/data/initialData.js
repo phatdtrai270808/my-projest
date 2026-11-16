@@ -24,8 +24,8 @@ export const MENU_CATEGORIES = [
   { id: 'food', name: 'Đồ Ăn & Bánh', icon: '🥐' },
 ];
 
-// Danh mục kho nguyên vật liệu khởi tạo của quán Tiến Phát
-export const INITIAL_INVENTORY = [
+// Danh mục kho nguyên vật liệu mẫu khảo sát của quán Tiến Phát (dùng khi nạp mẫu)
+export const DEMO_INVENTORY = [
   { id: 'INV-CF', name: 'Hạt Cà Phê Robusta Đắk Lắk', unit: 'g', stock: 15000, costPerUnit: 180, minStock: 2000, category: 'Cà phê' },
   { id: 'INV-AR', name: 'Hạt Cà Phê Arabica Cầu Đất', unit: 'g', stock: 8000, costPerUnit: 260, minStock: 1500, category: 'Cà phê' },
   { id: 'INV-SD', name: 'Sữa Đặc Ông Thọ', unit: 'ml', stock: 12000, costPerUnit: 65, minStock: 2000, category: 'Sữa & Bơ' },
@@ -47,7 +47,11 @@ export const INITIAL_INVENTORY = [
   { id: 'INV-HD', name: 'Hạt Hướng Dương Vị Dừa', unit: 'g', stock: 5000, costPerUnit: 100, minStock: 1000, category: 'Ăn vặt' },
 ];
 
-export const INITIAL_MENU = [
+// Khởi tạo kho trống để nhóm tự quản lý
+export const INITIAL_INVENTORY = [];
+
+// Thực đơn 25 món khảo sát đầy đủ (dùng khi bấm Nạp Dữ Liệu Mẫu)
+export const DEMO_MENU = [
   // 1. Cà phê phin truyền thống & pha máy
   {
     id: 'CF1',
@@ -350,3 +354,6 @@ export const INITIAL_MENU = [
     recipe: 'Đĩa 80g hạt hướng dương rang mộc tẩm nước cốt dừa thơm béo, món nhâm nhi trò chuyện.'
   }
 ];
+
+// Khởi tạo thực đơn trống để nhóm tự thêm món và kiểm tra
+export const INITIAL_MENU = [];

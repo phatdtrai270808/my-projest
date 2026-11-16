@@ -6,312 +6,68 @@ const CURRENT_YEAR = 2026;
 const CURRENT_MONTH = 11; // Tháng 11 năm 2026
 const TODAY_DAY = 10; // Ngày 10/11/2026
 
-// Dữ liệu 12 Tháng chuẩn hóa của quán cà phê Tiến Phát
+// Cấu trúc 12 Tháng của năm - Mọi số liệu Doanh thu & Chi phí được tính 100% động từ Đơn Hàng POS
 const INITIAL_MONTHS_P_AND_L = [
-  {
-    month: 1,
-    name: 'Tháng 1',
-    start: '01/01/2026',
-    end: '31/01/2026',
-    daysInMonth: 31,
-    revenue: 78500000,
-    cost: 51200000,
-    importCost: 32000000,
-    lossCost: 1200000,
-    operatingCost: 18000000,
-    profit: 27300000,
-    margin: 34.8,
-    orders: 1050,
-    cash: 35000000,
-    transfer: 43500000,
-    note: 'Tết Dương Lịch & Khởi đầu năm mới đông khách',
-  },
-  {
-    month: 2,
-    name: 'Tháng 2',
-    start: '01/02/2026',
-    end: '28/02/2026',
-    daysInMonth: 28,
-    revenue: 92400000,
-    cost: 58000000,
-    importCost: 38000000,
-    lossCost: 1500000,
-    operatingCost: 18500000,
-    profit: 34400000,
-    margin: 37.2,
-    orders: 1220,
-    cash: 42000000,
-    transfer: 50400000,
-    note: 'Tết Nguyên Đán Giáp Thìn - Doanh thu kỷ lục',
-  },
-  {
-    month: 3,
-    name: 'Tháng 3',
-    start: '01/03/2026',
-    end: '31/03/2026',
-    daysInMonth: 31,
-    revenue: 84600000,
-    cost: 54100000,
-    importCost: 34500000,
-    lossCost: 1100000,
-    operatingCost: 18500000,
-    profit: 30500000,
-    margin: 36.0,
-    orders: 1140,
-    cash: 38000000,
-    transfer: 46600000,
-    note: 'Tháng 3 ổn định, học sinh sinh viên họp nhóm',
-  },
-  {
-    month: 4,
-    name: 'Tháng 4',
-    start: '01/04/2026',
-    end: '30/04/2026',
-    daysInMonth: 30,
-    revenue: 88900000,
-    cost: 56200000,
-    importCost: 36200000,
-    lossCost: 1300000,
-    operatingCost: 18700000,
-    profit: 32700000,
-    margin: 36.8,
-    orders: 1190,
-    cash: 40000000,
-    transfer: 48900000,
-    note: 'Dịp lễ 30/4 đông khách gia đình',
-  },
-  {
-    month: 5,
-    name: 'Tháng 5',
-    start: '01/05/2026',
-    end: '31/05/2026',
-    daysInMonth: 31,
-    revenue: 95200000,
-    cost: 60500000,
-    importCost: 39500000,
-    lossCost: 1600000,
-    operatingCost: 19400000,
-    profit: 34700000,
-    margin: 36.4,
-    orders: 1280,
-    cash: 43000000,
-    transfer: 52200000,
-    note: 'Chớm hè, đồ uống đá xay và trà trái cây bán chạy',
-  },
-  {
-    month: 6,
-    name: 'Tháng 6',
-    start: '01/06/2026',
-    end: '30/06/2026',
-    daysInMonth: 30,
-    revenue: 98400000,
-    cost: 62000000,
-    importCost: 40800000,
-    lossCost: 1700000,
-    operatingCost: 19500000,
-    profit: 36400000,
-    margin: 37.0,
-    orders: 1320,
-    cash: 44000000,
-    transfer: 54400000,
-    note: 'Cao điểm mùa hè, phòng lạnh luôn kín chỗ',
-  },
-  {
-    month: 7,
-    name: 'Tháng 7',
-    start: '01/07/2026',
-    end: '31/07/2026',
-    daysInMonth: 31,
-    revenue: 91000000,
-    cost: 58200000,
-    importCost: 37500000,
-    lossCost: 1400000,
-    operatingCost: 19300000,
-    profit: 32800000,
-    margin: 36.0,
-    orders: 1210,
-    cash: 41000000,
-    transfer: 50000000,
-    note: 'Mùa mưa bắt đầu, cà phê ấm và bánh ngọt tăng',
-  },
-  {
-    month: 8,
-    name: 'Tháng 8',
-    start: '01/08/2026',
-    end: '31/08/2026',
-    daysInMonth: 31,
-    revenue: 87500000,
-    cost: 56000000,
-    importCost: 36000000,
-    lossCost: 1300000,
-    operatingCost: 18700000,
-    profit: 31500000,
-    margin: 36.0,
-    orders: 1180,
-    cash: 39000000,
-    transfer: 48500000,
-    note: 'Khách văn phòng uống bạc xỉu và cafe muối đều',
-  },
-  {
-    month: 9,
-    name: 'Tháng 9',
-    start: '01/09/2026',
-    end: '30/09/2026',
-    daysInMonth: 30,
-    revenue: 86200000,
-    cost: 55000000,
-    importCost: 35200000,
-    lossCost: 1200000,
-    operatingCost: 18600000,
-    profit: 31200000,
-    margin: 36.2,
-    orders: 1160,
-    cash: 38500000,
-    transfer: 47700000,
-    note: 'Khai giảng năm học mới, lượng sinh viên tăng',
-  },
-  {
-    month: 10,
-    name: 'Tháng 10',
-    start: '01/10/2026',
-    end: '31/10/2026',
-    daysInMonth: 31,
-    revenue: 89300000,
-    cost: 57100000,
-    importCost: 36800000,
-    lossCost: 1300000,
-    operatingCost: 19000000,
-    profit: 32200000,
-    margin: 36.1,
-    orders: 1200,
-    cash: 40500000,
-    transfer: 48800000,
-    note: 'Lễ 20/10 khách đặt bàn trước tăng vọt',
-  },
-  {
-    month: 11,
-    name: 'Tháng 11',
-    start: '01/11/2026',
-    end: '30/11/2026',
-    daysInMonth: 30,
-    revenue: 93500000,
-    cost: 59200000,
-    importCost: 38200000,
-    lossCost: 1400000,
-    operatingCost: 19600000,
-    profit: 34300000,
-    margin: 36.7,
-    orders: 1250,
-    cash: 42000000,
-    transfer: 51500000,
-    note: 'Tháng hiện tại - Đang ở giữa tháng (tính đến ngày 10/11)',
-  },
-  {
-    month: 12,
-    name: 'Tháng 12',
-    start: '01/12/2026',
-    end: '31/12/2026',
-    daysInMonth: 31,
-    revenue: 105000000,
-    cost: 66000000,
-    importCost: 43500000,
-    lossCost: 1800000,
-    operatingCost: 20700000,
-    profit: 39000000,
-    margin: 37.1,
-    orders: 1410,
-    cash: 48000000,
-    transfer: 57000000,
-    note: 'Tháng tương lai - Sắp diễn ra',
-  },
+  { month: 1, name: 'Tháng 1', daysInMonth: 31 },
+  { month: 2, name: 'Tháng 2', daysInMonth: 28 },
+  { month: 3, name: 'Tháng 3', daysInMonth: 31 },
+  { month: 4, name: 'Tháng 4', daysInMonth: 30 },
+  { month: 5, name: 'Tháng 5', daysInMonth: 31 },
+  { month: 6, name: 'Tháng 6', daysInMonth: 30 },
+  { month: 7, name: 'Tháng 7', daysInMonth: 31 },
+  { month: 8, name: 'Tháng 8', daysInMonth: 31 },
+  { month: 9, name: 'Tháng 9', daysInMonth: 30 },
+  { month: 10, name: 'Tháng 10', daysInMonth: 31 },
+  { month: 11, name: 'Tháng 11', daysInMonth: 30 },
+  { month: 12, name: 'Tháng 12', daysInMonth: 31 },
 ];
 
-// Danh sách các tuần của Tháng 11/2026
+// Cấu trúc các tuần cơ sở của Tháng 11/2026 - Mọi số liệu tính 100% động từ Đơn Hàng POS
 const INITIAL_WEEKS = [
   {
     weekId: 'W45',
     name: 'Tuần 45 (10/11 - 16/11/2026)',
     start: '10/11/2026',
     end: '16/11/2026',
-    revenue: 7270000,
-    cost: 4500000,
-    cash: 3130000,
-    transfer: 4140000,
-    profit: 2770000,
-    orders: 90,
-    daysCount: 2, // Mới bán được 2 ngày (đang ở giữa tuần)
+    daysCount: 7,
     isCurrent: true,
     status: 'ACTIVE',
-    statusLabel: '⚡ Đang Diễn Ra (Giữa tuần)',
-    note: 'Tuần hiện tại - Mới bắt đầu được 2 ngày đầu tuần (Thứ 2, Thứ 3 ngày 10/11)',
   },
   {
     weekId: 'W44',
     name: 'Tuần 44 (03/11 - 09/11/2026)',
     start: '03/11/2026',
     end: '09/11/2026',
-    revenue: 24500000,
-    cost: 15200000,
-    cash: 10500000,
-    transfer: 14000000,
-    profit: 9300000,
-    orders: 310,
     daysCount: 7,
     isCurrent: false,
     status: 'COMPLETED',
-    statusLabel: '✅ Đã Hoàn Tất',
-    note: 'Tuần trọn vẹn đầu tháng 11, lượng khách ổn định',
   },
   {
     weekId: 'W43',
     name: 'Tuần 43 (27/10 - 02/11/2026)',
     start: '27/10/2026',
     end: '02/11/2026',
-    revenue: 23800000,
-    cost: 14800000,
-    cash: 10200000,
-    transfer: 13600000,
-    profit: 9000000,
-    orders: 300,
     daysCount: 7,
     isCurrent: false,
     status: 'COMPLETED',
-    statusLabel: '✅ Đã Hoàn Tất',
-    note: 'Tuần cuối tháng 10, sinh viên ôn thi đông',
   },
   {
     weekId: 'W42',
     name: 'Tuần 42 (20/10 - 26/10/2026)',
     start: '20/10/2026',
     end: '26/10/2026',
-    revenue: 25600000,
-    cost: 15900000,
-    cash: 11100000,
-    transfer: 14500000,
-    profit: 9700000,
-    orders: 325,
     daysCount: 7,
     isCurrent: false,
     status: 'COMPLETED',
-    statusLabel: '✅ Đã Hoàn Tất',
-    note: 'Dịp lễ 20/10 đông khách đặt bàn trước',
   },
   {
     weekId: 'W46',
     name: 'Tuần 46 (17/11 - 23/11/2026)',
     start: '17/11/2026',
     end: '23/11/2026',
-    revenue: 0,
-    cost: 0,
-    cash: 0,
-    transfer: 0,
-    profit: 0,
-    orders: 0,
-    daysCount: 0,
+    daysCount: 7,
     isCurrent: false,
     status: 'UPCOMING',
-    statusLabel: '⏳ Sắp Diễn Ra',
-    note: 'Tuần tương lai chưa tới thời gian bán',
   },
 ];
 
@@ -339,6 +95,31 @@ const extractDateStr = (dateInput) => {
     return `${d}/${m}/${y}`;
   }
   return '';
+};
+
+// Hàm chuyển đổi ngày giờ của hóa đơn thành Date object chuẩn
+const parseOrderDate = (dateInput) => {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date && !isNaN(dateInput)) return dateInput;
+  if (typeof dateInput === 'string') {
+    const dmyMatch = dateInput.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10);
+      const month = parseInt(dmyMatch[2], 10) - 1;
+      const year = parseInt(dmyMatch[3], 10);
+      return new Date(year, month, day);
+    }
+    const isoMatch = dateInput.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10) - 1;
+      const day = parseInt(isoMatch[3], 10);
+      return new Date(year, month, day);
+    }
+    const d = new Date(dateInput);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
 };
 
 export default function RevenueAnalytics({ orders = [] }) {
@@ -397,41 +178,11 @@ export default function RevenueAnalytics({ orders = [] }) {
   }, [isYearPickerOpen]);
 
   // =========================================================================
-  // 1. TÍNH TOÁN DOANH THU THEO NGÀY (DAY STATS)
+  // 1. TÍNH TOÁN DOANH THU THEO NGÀY (DAY STATS) - 100% TỪ ĐƠN HÀNG THỰC TẾ
   // =========================================================================
   const dayStats = useMemo(() => {
     const isToday = targetDateStr === todayDateStr;
     const isYesterday = targetDateStr === yesterdayDateStr;
-
-    // Kiểm tra ngày tương lai
-    const isFutureDate = (() => {
-      if (!selectedDate) return false;
-      const parts = selectedDate.split('-');
-      if (parts.length === 3) {
-        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        const now = new Date();
-        now.setHours(23, 59, 59, 999);
-        return d > now;
-      }
-      return false;
-    })();
-
-    if (isFutureDate) {
-      return {
-        isFutureDate: true,
-        statusLabel: '⏳ Sắp Diễn Ra',
-        statusDesc: 'Ngày tương lai chưa tới thời gian mở bán',
-        statusColor: 'bg-blue-100 text-blue-900 border-blue-300',
-        totalRevenue: 0,
-        cash: 0,
-        transfer: 0,
-        cost: 0,
-        profit: 0,
-        ordersCount: 0,
-        avgPerOrder: 0,
-        matchedOrders: [],
-      };
-    }
 
     // Lọc các đơn hàng thực tế phát sinh trong ngày từ POS
     const matchedOrders = orders.filter((o) => extractDateStr(o.createdAt || o.date) === targetDateStr);
@@ -439,33 +190,71 @@ export default function RevenueAnalytics({ orders = [] }) {
     let realTotal = 0;
     let realCash = 0;
     let realTransfer = 0;
+    let calculatedCost = 0;
+    const hourlyRevenue = {};
+
     matchedOrders.forEach((o) => {
       const amt = o.totalAmount || o.total || 0;
       realTotal += amt;
-      if (o.paymentMethod === 'TRANSFER') realTransfer += amt;
-      else realCash += amt;
+      const pm = String(o.paymentMethod || '').toUpperCase();
+      if (pm.includes('TRANSFER') || pm.includes('MB') || pm.includes('QR') || pm.includes('BANK')) {
+        realTransfer += amt;
+      } else {
+        realCash += amt;
+      }
+
+      // Chi phí vốn nguyên liệu (COGS): Tính theo từng món hoặc tỷ lệ chuẩn F&B 35%
+      (o.items || []).forEach((it) => {
+        const itemCost = it.cost ? it.cost * (it.qty || 1) : Math.round((it.price || 0) * 0.35 * (it.qty || 1));
+        calculatedCost += itemCost;
+      });
+
+      // Bóc tách khung giờ để tính TB doanh thu giờ vàng
+      let hour = null;
+      const timeStr = String(o.createdAt || o.time || '');
+      const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1], 10);
+      } else if (o.createdAt && !isNaN(new Date(o.createdAt).getTime())) {
+        hour = new Date(o.createdAt).getHours();
+      }
+      if (hour !== null) {
+        hourlyRevenue[hour] = (hourlyRevenue[hour] || 0) + amt;
+      }
     });
 
-    const baseRevenue = isToday ? 3850000 : isYesterday ? 3420000 : 3100000;
-    const baseOrdersCount = isToday ? 48 : isYesterday ? 42 : 38;
-    const baseCash = isToday ? 1650000 : isYesterday ? 1480000 : 1350000;
-    const baseTransfer = isToday ? 2200000 : isYesterday ? 1940000 : 1750000;
-    const baseCost = isToday ? 2380000 : isYesterday ? 2120000 : 1950000;
-
-    const totalRevenue = baseRevenue + realTotal;
-    const cash = baseCash + realCash;
-    const transfer = baseTransfer + realTransfer;
-    const ordersCount = baseOrdersCount + matchedOrders.length;
-    const cost = baseCost;
+    const totalRevenue = realTotal;
+    const cash = realCash;
+    const transfer = realTransfer;
+    const ordersCount = matchedOrders.length;
+    const cost = calculatedCost;
     const profit = totalRevenue - cost;
     const margin = totalRevenue > 0 ? ((profit / totalRevenue) * 100).toFixed(1) : 0;
     const avgPerOrder = ordersCount > 0 ? Math.round(totalRevenue / ordersCount) : 0;
 
-    const statusLabel = isToday ? '⚡ Đang Diễn Ra (Hôm nay)' : '✅ Đã Hoàn Tất';
-    const statusDesc = isToday ? 'Đang cập nhật trực tiếp từ máy POS thu ngân' : 'Đã kết sổ cuối ngày';
-    const statusColor = isToday
-      ? 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse'
-      : 'bg-emerald-100 text-emerald-900 border-emerald-300';
+    // Tỷ lệ thực tế Tiền mặt : QR
+    const cashPct = totalRevenue > 0 ? Math.round((cash / totalRevenue) * 100) : 0;
+    const qrPct = totalRevenue > 0 ? (100 - cashPct) : 0;
+    const cashRatioStr = totalRevenue > 0 ? `${cashPct}% : ${qrPct}%` : '0% : 0%';
+
+    // Tính TB tiền thu giờ vàng (doanh thu của giờ cao điểm nhất trong ngày)
+    let peakHourlyAvg = 0;
+    const hourValues = Object.values(hourlyRevenue);
+    if (hourValues.length > 0) {
+      peakHourlyAvg = Math.max(...hourValues);
+    } else if (totalRevenue > 0) {
+      peakHourlyAvg = totalRevenue;
+    }
+
+    const statusLabel = ordersCount > 0
+      ? isToday ? '⚡ Đang Diễn Ra (Đã có đơn)' : '✅ Đã Hoàn Tất'
+      : isToday ? '⚡ Chờ Đơn Hàng Đầu Tiên' : 'Chưa có đơn hàng';
+    const statusDesc = ordersCount > 0
+      ? `Đã ghi nhận ${ordersCount} đơn thanh toán từ quầy thu ngân`
+      : 'Chưa có đơn hàng nào thanh toán trong ngày này';
+    const statusColor = ordersCount > 0
+      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+      : 'bg-slate-100 text-slate-600 border-slate-200';
 
     return {
       isFutureDate: false,
@@ -475,217 +264,231 @@ export default function RevenueAnalytics({ orders = [] }) {
       totalRevenue,
       cash,
       transfer,
+      cashPct,
+      qrPct,
+      cashRatioStr,
       cost,
       profit,
       margin,
       ordersCount,
       avgPerOrder,
+      peakHourlyAvg,
       matchedOrders,
     };
   }, [selectedDate, targetDateStr, todayDateStr, yesterdayDateStr, orders]);
 
   // =========================================================================
-  // 2. TÍNH TOÁN DOANH THU THEO TUẦN (WEEK STATS)
+  // 2. TÍNH TOÁN DOANH THU THEO TUẦN (WEEK STATS) - 100% TỪ ĐƠN HÀNG THỰC TẾ
   // =========================================================================
-  const weekData = useMemo(() => {
-    const selectedWeek = INITIAL_WEEKS.find((w) => w.weekId === selectedWeekId) || INITIAL_WEEKS[0];
+  const computedWeeks = useMemo(() => {
+    return INITIAL_WEEKS.map((w) => {
+      const startParts = w.start.split('/');
+      const endParts = w.end.split('/');
+      const startDate = new Date(parseInt(startParts[2], 10), parseInt(startParts[1], 10) - 1, parseInt(startParts[0], 10), 0, 0, 0);
+      const endDate = new Date(parseInt(endParts[2], 10), parseInt(endParts[1], 10) - 1, parseInt(endParts[0], 10), 23, 59, 59);
 
-    // Cộng thêm đơn hàng phát sinh thật nếu là tuần hiện tại
-    const isCurrentWeek = selectedWeek.isCurrent;
-    const realOrdersRevenue = isCurrentWeek
-      ? orders.reduce((s, o) => s + (o.totalAmount || o.total || 0), 0)
-      : 0;
+      const matchedWeekOrders = orders.filter((o) => {
+        const d = parseOrderDate(o.createdAt || o.date);
+        return d && d >= startDate && d <= endDate;
+      });
 
-    const totalRevenue = selectedWeek.revenue + realOrdersRevenue;
-    const cash = selectedWeek.cash + (isCurrentWeek ? Math.round(realOrdersRevenue * 0.45) : 0);
-    const transfer = selectedWeek.transfer + (isCurrentWeek ? Math.round(realOrdersRevenue * 0.55) : 0);
-    const cost = selectedWeek.cost;
-    const profit = totalRevenue - cost;
-    const margin = totalRevenue > 0 ? ((profit / totalRevenue) * 100).toFixed(1) : 0;
-    const ordersCount = selectedWeek.orders + (isCurrentWeek ? orders.length : 0);
+      let rev = 0;
+      let cash = 0;
+      let transfer = 0;
+      let cost = 0;
 
-    const activeDays = selectedWeek.daysCount || 7;
-    const avgPerDay = activeDays > 0 ? Math.round(totalRevenue / activeDays) : 0;
-    const avgCostPerDay = activeDays > 0 ? Math.round(cost / activeDays) : 0;
-    const avgPerOrder = ordersCount > 0 ? Math.round(totalRevenue / ordersCount) : 0;
+      matchedWeekOrders.forEach((o) => {
+        const amt = o.totalAmount || o.total || 0;
+        rev += amt;
+        const pm = String(o.paymentMethod || '').toUpperCase();
+        if (pm.includes('TRANSFER') || pm.includes('MB') || pm.includes('QR') || pm.includes('BANK')) {
+          transfer += amt;
+        } else {
+          cash += amt;
+        }
+        (o.items || []).forEach((it) => {
+          cost += it.cost ? it.cost * (it.qty || 1) : Math.round((it.price || 0) * 0.35 * (it.qty || 1));
+        });
+      });
 
-    return {
-      ...selectedWeek,
-      totalRevenue,
-      cash,
-      transfer,
-      cost,
-      profit,
-      margin,
-      ordersCount,
-      avgPerDay,
-      avgCostPerDay,
-      avgPerOrder,
-    };
-  }, [selectedWeekId, orders]);
+      const profit = rev - cost;
+      const margin = rev > 0 ? ((profit / rev) * 100).toFixed(1) : 0;
+      const count = matchedWeekOrders.length;
+      const avgPerOrder = count > 0 ? Math.round(rev / count) : 0;
 
-  // =========================================================================
-  // 3. TÍNH TOÁN DOANH THU THEO THÁNG (MONTH STATS)
-  // =========================================================================
-  const monthData = useMemo(() => {
-    const targetMonthObj = INITIAL_MONTHS_P_AND_L.find((m) => m.month === selectedMonth) || INITIAL_MONTHS_P_AND_L[10];
-
-    const isCurrentMonth = selectedMonth === CURRENT_MONTH; // Tháng 11/2026
-    const isFutureMonth = selectedMonth > CURRENT_MONTH; // Tháng 12/2026
-    const isPastMonth = selectedMonth < CURRENT_MONTH;
-
-    if (isFutureMonth) {
       return {
-        ...targetMonthObj,
-        totalRevenue: 0,
-        cash: 0,
-        transfer: 0,
-        cost: 0,
-        profit: 0,
-        margin: 0,
-        ordersCount: 0,
-        avgPerDay: 0,
-        avgCostPerDay: 0,
-        avgPerOrder: 0,
-        statusLabel: '⏳ Sắp Diễn Ra',
-        statusColor: 'bg-blue-100 text-blue-900 border-blue-300',
-        note: `Tháng ${selectedMonth}/2026 chưa tới. Hệ thống sẵn sàng ghi nhận khi bước sang tháng này!`,
-        isFuture: true,
+        ...w,
+        revenue: rev,
+        totalRevenue: rev,
+        cash,
+        transfer,
+        cost,
+        profit,
+        margin,
+        ordersCount: count,
+        avgPerDay: count > 0 ? Math.round(rev / 7) : 0,
+        avgCostPerDay: count > 0 ? Math.round(cost / 7) : 0,
+        avgPerOrder,
       };
-    }
+    });
+  }, [orders]);
 
-    // Nếu là tháng 11 hiện tại: Đang ở giữa tháng (tính đến ngày 10/11)
-    const activeDays = isCurrentMonth ? TODAY_DAY : targetMonthObj.daysInMonth;
-    const ratio = isCurrentMonth ? TODAY_DAY / targetMonthObj.daysInMonth : 1.0;
-
-    const realOrdersRev = isCurrentMonth
-      ? orders.reduce((s, o) => s + (o.totalAmount || o.total || 0), 0)
-      : 0;
-
-    const totalRevenue = Math.round(targetMonthObj.revenue * ratio) + realOrdersRev;
-    const cost = Math.round(targetMonthObj.cost * ratio);
-    const cash = Math.round(targetMonthObj.cash * ratio) + Math.round(realOrdersRev * 0.45);
-    const transfer = Math.round(targetMonthObj.transfer * ratio) + Math.round(realOrdersRev * 0.55);
-    const profit = totalRevenue - cost;
-    const margin = totalRevenue > 0 ? ((profit / totalRevenue) * 100).toFixed(1) : 0;
-    const ordersCount = Math.round(targetMonthObj.orders * ratio) + (isCurrentMonth ? orders.length : 0);
-
-    const avgPerDay = activeDays > 0 ? Math.round(totalRevenue / activeDays) : 0;
-    const avgCostPerDay = activeDays > 0 ? Math.round(cost / activeDays) : 0;
-    const avgPerOrder = ordersCount > 0 ? Math.round(totalRevenue / ordersCount) : 0;
-
-    const statusLabel = isCurrentMonth
-      ? `⚡ Đang Diễn Ra (Đến ngày ${TODAY_DAY}/11)`
-      : '✅ Đã Hoàn Tất';
-
-    const statusColor = isCurrentMonth
-      ? 'bg-amber-100 text-amber-900 border-amber-300'
-      : 'bg-emerald-100 text-emerald-900 border-emerald-300';
+  const weekData = useMemo(() => {
+    const cur = computedWeeks.find((w) => w.weekId === selectedWeekId) || computedWeeks[0];
+    const isCurrent = cur.weekId === 'W45';
+    const statusLabel = cur.ordersCount > 0
+      ? (isCurrent ? '⚡ Đang Diễn Ra (Đã có đơn)' : '✅ Đã Hoàn Tất')
+      : (isCurrent ? '⚡ Đang Diễn Ra (Chưa có đơn)' : (cur.status === 'UPCOMING' ? '⏳ Sắp Diễn Ra' : 'Chưa có đơn hàng'));
+    const statusColor = cur.ordersCount > 0
+      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+      : (cur.status === 'UPCOMING' ? 'bg-blue-100 text-blue-900 border-blue-300' : 'bg-slate-100 text-slate-600 border-slate-200');
 
     return {
-      ...targetMonthObj,
-      totalRevenue,
-      cash,
-      transfer,
-      cost,
-      profit,
-      margin,
-      ordersCount,
-      avgPerDay,
-      avgCostPerDay,
-      avgPerOrder,
-      activeDays,
+      ...cur,
       statusLabel,
       statusColor,
-      isFuture: false,
+      note: cur.ordersCount > 0
+        ? `Đã ghi nhận ${cur.ordersCount} đơn hàng trong ${cur.name} • Doanh thu: ${cur.totalRevenue.toLocaleString()} VNĐ`
+        : `Chưa có đơn hàng nào phát sinh trong ${cur.name}`,
     };
-  }, [selectedMonth, orders]);
+  }, [computedWeeks, selectedWeekId]);
 
   // =========================================================================
-  // 4. TÍNH TOÁN DOANH THU THEO NĂM (YEAR STATS)
+  // 3. TÍNH TOÁN DOANH THU THEO THÁNG (MONTH STATS) - 100% TỪ ĐƠN HÀNG THỰC TẾ
+  // =========================================================================
+  const computedMonths = useMemo(() => {
+    return INITIAL_MONTHS_P_AND_L.map((m) => {
+      const matchedMonthOrders = orders.filter((o) => {
+        const d = parseOrderDate(o.createdAt || o.date);
+        if (!d) return false;
+        return (d.getMonth() + 1) === m.month && d.getFullYear() === selectedYear;
+      });
+
+      let rev = 0;
+      let cash = 0;
+      let transfer = 0;
+      let cost = 0;
+
+      matchedMonthOrders.forEach((o) => {
+        const amt = o.totalAmount || o.total || 0;
+        rev += amt;
+        const pm = String(o.paymentMethod || '').toUpperCase();
+        if (pm.includes('TRANSFER') || pm.includes('MB') || pm.includes('QR') || pm.includes('BANK')) {
+          transfer += amt;
+        } else {
+          cash += amt;
+        }
+        (o.items || []).forEach((it) => {
+          cost += it.cost ? it.cost * (it.qty || 1) : Math.round((it.price || 0) * 0.35 * (it.qty || 1));
+        });
+      });
+
+      const profit = rev - cost;
+      const margin = rev > 0 ? ((profit / rev) * 100).toFixed(1) : 0;
+      const count = matchedMonthOrders.length;
+      const avgPerOrder = count > 0 ? Math.round(rev / count) : 0;
+
+      return {
+        ...m,
+        revenue: rev,
+        totalRevenue: rev,
+        cash,
+        transfer,
+        cost,
+        profit,
+        margin,
+        ordersCount: count,
+        avgPerDay: count > 0 ? Math.round(rev / m.daysInMonth) : 0,
+        avgCostPerDay: count > 0 ? Math.round(cost / m.daysInMonth) : 0,
+        avgPerOrder,
+      };
+    });
+  }, [orders, selectedYear]);
+
+  const monthData = useMemo(() => {
+    const cur = computedMonths.find((m) => m.month === selectedMonth) || computedMonths[CURRENT_MONTH - 1];
+    const isNov = cur.month === CURRENT_MONTH && selectedYear === CURRENT_YEAR;
+    const isFuture = cur.month > CURRENT_MONTH && selectedYear === CURRENT_YEAR;
+
+    const statusLabel = cur.ordersCount > 0
+      ? (isNov ? `⚡ Đang Diễn Ra (${cur.ordersCount} đơn)` : '✅ Đã Hoàn Tất')
+      : (isNov ? '⚡ Đang Diễn Ra (Chưa có đơn)' : (isFuture ? '⏳ Sắp Tới' : 'Chưa có đơn hàng'));
+    const statusColor = cur.ordersCount > 0
+      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+      : (isFuture ? 'bg-blue-100 text-blue-900 border-blue-300' : 'bg-slate-100 text-slate-600 border-slate-200');
+
+    return {
+      ...cur,
+      start: `01/${String(cur.month).padStart(2, '0')}/${selectedYear}`,
+      end: `${cur.daysInMonth}/${String(cur.month).padStart(2, '0')}/${selectedYear}`,
+      statusLabel,
+      statusColor,
+      note: cur.ordersCount > 0
+        ? `Đã ghi nhận ${cur.ordersCount} đơn hàng trong Tháng ${cur.month} • Doanh thu: ${cur.totalRevenue.toLocaleString()} VNĐ`
+        : `Chưa có đơn hàng nào trong Tháng ${cur.month} năm ${selectedYear}`,
+      isFuture,
+    };
+  }, [computedMonths, selectedMonth, selectedYear]);
+
+  // =========================================================================
+  // 4. TÍNH TOÁN DOANH THU THEO NĂM (YEAR STATS) - 100% TỪ ĐƠN HÀNG THỰC TẾ
   // =========================================================================
   const yearData = useMemo(() => {
-    const isCurrentYr = selectedYear === CURRENT_YEAR;
-    const isPastYr = selectedYear === START_YEAR;
-    const isFutureYr = selectedYear > CURRENT_YEAR;
-
-    if (isFutureYr) {
-      return {
-        totalRevenue: 0,
-        cash: 0,
-        transfer: 0,
-        cost: 0,
-        profit: 0,
-        margin: 0,
-        ordersCount: 0,
-        avgPerDay: 0,
-        avgCostPerDay: 0,
-        statusLabel: '⏳ Sắp Diễn Ra',
-        statusColor: 'bg-blue-100 text-blue-900 border-blue-300',
-        note: `Năm ${selectedYear} chưa tới. Dữ liệu sẽ bắt đầu ghi nhận khi bước sang năm này!`,
-        isFuture: true,
-      };
-    }
-
-    // Năm 2026: tính từ đầu năm đến ngày 10/11 hiện tại
-    const realOrdersRev = isCurrentYr
-      ? orders.reduce((s, o) => s + (o.totalAmount || o.total || 0), 0)
-      : 0;
-
-    const yearMonths = INITIAL_MONTHS_P_AND_L.slice(0, isCurrentYr ? CURRENT_MONTH : 12);
-    let totalRevenue = 0;
-    let cost = 0;
-    let cash = 0;
-    let transfer = 0;
-    let ordersCount = 0;
-
-    yearMonths.forEach((m) => {
-      const isNov = isCurrentYr && m.month === CURRENT_MONTH;
-      const ratio = isNov ? TODAY_DAY / m.daysInMonth : 1.0;
-      const mult = isPastYr ? 0.88 : 1.0;
-
-      totalRevenue += Math.round(m.revenue * mult * ratio);
-      cost += Math.round(m.cost * mult * ratio);
-      cash += Math.round(m.cash * mult * ratio);
-      transfer += Math.round(m.transfer * mult * ratio);
-      ordersCount += Math.round(m.orders * mult * ratio);
+    const matchedYearOrders = orders.filter((o) => {
+      const d = parseOrderDate(o.createdAt || o.date);
+      if (!d) return selectedYear === CURRENT_YEAR;
+      return d.getFullYear() === selectedYear;
     });
 
-    totalRevenue += realOrdersRev;
-    cash += Math.round(realOrdersRev * 0.45);
-    transfer += Math.round(realOrdersRev * 0.55);
-    ordersCount += isCurrentYr ? orders.length : 0;
+    let rev = 0;
+    let cash = 0;
+    let transfer = 0;
+    let cost = 0;
+    const count = matchedYearOrders.length;
 
-    const profit = totalRevenue - cost;
-    const margin = totalRevenue > 0 ? ((profit / totalRevenue) * 100).toFixed(1) : 0;
-    const activeDays = isCurrentYr ? 314 : 365; // Đến 10/11 là 314 ngày
-    const avgPerDay = activeDays > 0 ? Math.round(totalRevenue / activeDays) : 0;
-    const avgCostPerDay = activeDays > 0 ? Math.round(cost / activeDays) : 0;
-    const avgPerOrder = ordersCount > 0 ? Math.round(totalRevenue / ordersCount) : 0;
+    matchedYearOrders.forEach((o) => {
+      const amt = o.totalAmount || o.total || 0;
+      rev += amt;
+      const pm = String(o.paymentMethod || '').toUpperCase();
+      if (pm.includes('TRANSFER') || pm.includes('MB') || pm.includes('QR') || pm.includes('BANK')) {
+        transfer += amt;
+      } else {
+        cash += amt;
+      }
+      (o.items || []).forEach((it) => {
+        cost += it.cost ? it.cost * (it.qty || 1) : Math.round((it.price || 0) * 0.35 * (it.qty || 1));
+      });
+    });
 
-    const statusLabel = isCurrentYr
-      ? `⚡ Đang Diễn Ra (Đến ngày ${TODAY_DAY}/11/${CURRENT_YEAR})`
-      : '✅ Đã Hoàn Tất (Năm Khởi Đầu)';
+    const profit = rev - cost;
+    const margin = rev > 0 ? ((profit / rev) * 100).toFixed(1) : 0;
+    const avgPerOrder = count > 0 ? Math.round(rev / count) : 0;
 
-    const statusColor = isCurrentYr
-      ? 'bg-amber-100 text-amber-900 border-amber-300'
-      : 'bg-emerald-100 text-emerald-900 border-emerald-300';
+    const isCurrentY = selectedYear === CURRENT_YEAR;
+    const isFutureY = selectedYear > CURRENT_YEAR;
+
+    const statusLabel = count > 0
+      ? (isCurrentY ? `⚡ Đang Diễn Ra (${count} đơn)` : '✅ Đã Hoàn Tất')
+      : (isCurrentY ? '⚡ Đang Diễn Ra (Chưa có đơn)' : (isFutureY ? '⏳ Sắp Tới' : 'Chưa có đơn hàng'));
+    const statusColor = count > 0
+      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+      : (isFutureY ? 'bg-blue-100 text-blue-900 border-blue-300' : 'bg-slate-100 text-slate-600 border-slate-200');
 
     return {
-      totalRevenue,
+      totalRevenue: rev,
       cash,
       transfer,
       cost,
       profit,
       margin,
-      ordersCount,
-      avgPerDay,
-      avgCostPerDay,
+      ordersCount: count,
+      avgPerDay: count > 0 ? Math.round(rev / 365) : 0,
+      avgCostPerDay: count > 0 ? Math.round(cost / 365) : 0,
       avgPerOrder,
-      activeDays,
+      activeDays: count > 0 ? 1 : 0,
       statusLabel,
       statusColor,
-      isFuture: false,
+      isFuture: isFutureY,
     };
   }, [selectedYear, orders]);
 
@@ -693,28 +496,64 @@ export default function RevenueAnalytics({ orders = [] }) {
   // 5. DỮ LIỆU THỐNG KÊ GIỜ VÀNG & TOP MÓN BÁN CHẠY (STATS)
   // =========================================================================
   const statsData = useMemo(() => {
-    const hourlyPeak = [
-      { slot: '07h - 09h', label: 'Cà phê sáng sớm', revenue: 720000, orders: 12, percent: 18, icon: '☕' },
-      { slot: '09h - 11h', label: 'Khung Giờ Vàng (Đông nhất)', revenue: 1450000, orders: 20, percent: 36, isPeak: true, icon: '🔥' },
-      { slot: '11h - 14h', label: 'Nghỉ trưa & văn phòng', revenue: 680000, orders: 9, percent: 16, icon: '🍛' },
-      { slot: '14h - 17h', label: 'Chiều mát trà & đá xay', revenue: 640000, orders: 8, percent: 15, icon: '🍹' },
-      { slot: '17h - 20h', label: 'Tối tụ họp bạn bè', revenue: 780000, orders: 10, percent: 19, icon: '✨' },
-      { slot: '20h - 22h', label: 'Đêm muộn thư giãn', revenue: 350000, orders: 5, percent: 8, icon: '🌙' },
+    if (!orders || orders.length === 0) {
+      return {
+        hourlyPeak: [],
+        topSellingDishes: [],
+        maxHourly: 0,
+        isEmpty: true,
+      };
+    }
+
+    const slots = [
+      { slot: '07h - 09h', startH: 7, endH: 9, label: 'Cà phê sáng sớm', revenue: 0, orders: 0, icon: '☕' },
+      { slot: '09h - 11h', startH: 9, endH: 11, label: 'Khung Giờ Vàng', revenue: 0, orders: 0, icon: '🔥' },
+      { slot: '11h - 14h', startH: 11, endH: 14, label: 'Nghỉ trưa & văn phòng', revenue: 0, orders: 0, icon: '🍛' },
+      { slot: '14h - 17h', startH: 14, endH: 17, label: 'Chiều mát trà & đá xay', revenue: 0, orders: 0, icon: '🍹' },
+      { slot: '17h - 20h', startH: 17, endH: 20, label: 'Tối tụ họp bạn bè', revenue: 0, orders: 0, icon: '✨' },
+      { slot: '20h - 22h', startH: 20, endH: 22, label: 'Đêm muộn thư giãn', revenue: 0, orders: 0, icon: '🌙' },
     ];
 
-    const topSellingDishes = [
-      { rank: 1, name: 'Cà Phê Muối Tiến Phát', category: 'Cà Phê', qty: 38, price: 32000, revenue: 1216000, icon: '☕' },
-      { rank: 2, name: 'Trà Đào Cam Sả', category: 'Trà & Trà Sữa', qty: 32, price: 35000, revenue: 1120000, icon: '🍑' },
-      { rank: 3, name: 'Bạc Xỉu Sài Gòn', category: 'Cà Phê', qty: 29, price: 29000, revenue: 841000, icon: '🥛' },
-      { rank: 4, name: 'Trà Sữa Tiến Phát Full Topping', category: 'Trà & Trà Sữa', qty: 25, price: 35000, revenue: 875000, icon: '🧋' },
-      { rank: 5, name: 'Freeze Cà Phê Đá Xay', category: 'Nước Uống & Đá Xay', qty: 21, price: 42000, revenue: 882000, icon: '🍧' },
-      { rank: 6, name: 'Bánh Croissant Bơ Tỏi', category: 'Đồ Ăn & Bánh', qty: 18, price: 28000, revenue: 504000, icon: '🥐' },
-    ];
+    const dishMap = {};
 
-    const maxHourly = Math.max(...hourlyPeak.map((h) => h.revenue));
+    orders.forEach((ord) => {
+      const amt = ord.totalAmount || ord.total || 0;
+      let hour = 9;
+      if (ord.createdAt) {
+        const timeMatch = ord.createdAt.match(/(\d{1,2}):(\d{2})/);
+        if (timeMatch) hour = parseInt(timeMatch[1], 10);
+      }
+      const matchedSlot = slots.find((s) => hour >= s.startH && hour < s.endH) || slots[1];
+      matchedSlot.revenue += amt;
+      matchedSlot.orders += 1;
 
-    return { hourlyPeak, topSellingDishes, maxHourly };
-  }, []);
+      (ord.items || []).forEach((it) => {
+        const name = it.name?.split('(')[0]?.trim() || it.name || 'Món';
+        if (!dishMap[name]) {
+          dishMap[name] = { name, category: it.category || 'Đồ uống', qty: 0, price: it.price || 0, revenue: 0 };
+        }
+        dishMap[name].qty += it.qty || 1;
+        dishMap[name].revenue += (it.price || 0) * (it.qty || 1);
+      });
+    });
+
+    const totalStatsRev = orders.reduce((s, o) => s + (o.totalAmount || o.total || 0), 0);
+    slots.forEach((s) => {
+      s.percent = totalStatsRev > 0 ? Math.round((s.revenue / totalStatsRev) * 100) : 0;
+    });
+
+    const maxSlotRev = Math.max(...slots.map((s) => s.revenue), 1);
+    slots.forEach((s) => {
+      if (s.revenue === maxSlotRev && s.revenue > 0) s.isPeak = true;
+    });
+
+    const topSellingDishes = Object.values(dishMap)
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 8)
+      .map((d, idx) => ({ ...d, rank: idx + 1, icon: '☕' }));
+
+    return { hourlyPeak: slots, topSellingDishes, maxHourly: maxSlotRev, isEmpty: false };
+  }, [orders]);
 
   // Danh sách các năm cho sổ lịch
   const calendarYears = useMemo(() => {
@@ -727,6 +566,45 @@ export default function RevenueAnalytics({ orders = [] }) {
 
   return (
     <div className="space-y-6 pb-12 font-sans">
+      {/* ======================================================== */}
+      {/* BANNER HƯỚNG DẪN CƠ CHẾ DÒNG TIỀN & CÔNG THỨC TÍNH LÃI SUẤT (THẢO LUẬN DỰ ÁN) */}
+      {/* ======================================================== */}
+      <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 rounded-3xl p-4 border border-amber-200/90 shadow-2xs space-y-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">💡</span>
+            <span className="font-black text-xs text-amber-950 uppercase tracking-wide">
+              Cơ Chế Dòng Tiền & Công Thức Tính Lãi Suất (Thảo Luận Cùng Nhóm)
+            </span>
+          </div>
+          <span className="text-[11px] font-bold text-amber-800 bg-white/80 px-2.5 py-0.5 rounded-full border border-amber-300">
+            Dữ liệu động 100% từ Đơn Hàng POS
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs pt-1">
+          <div className="bg-white/90 p-2.5 rounded-xl border border-amber-200/80">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">1. Tổng Doanh Thu</div>
+            <div className="font-extrabold text-[#8B181B] mt-0.5">Tiền Mặt + Chuyển Khoản QR</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">Thu trực tiếp từ khách thanh toán</div>
+          </div>
+          <div className="bg-white/90 p-2.5 rounded-xl border border-amber-200/80">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">2. Giá Vốn (COGS)</div>
+            <div className="font-extrabold text-amber-700 mt-0.5">Định Lượng x Giá Nguyên Liệu</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">Tự động trừ trực tiếp vào Kho</div>
+          </div>
+          <div className="bg-white/90 p-2.5 rounded-xl border border-amber-200/80">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">3. Lợi Nhuận Ròng (Lãi)</div>
+            <div className="font-extrabold text-emerald-700 mt-0.5">Doanh Thu - Tổng Chi Phí</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">Số tiền thực lãi sau khi bán</div>
+          </div>
+          <div className="bg-white/90 p-2.5 rounded-xl border border-amber-200/80">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">4. Tỷ Suất Lãi (Biên Lợi Nhuận)</div>
+            <div className="font-extrabold text-purple-700 mt-0.5">(Lãi / Doanh Thu) x 100%</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">Hiệu quả sinh lời của quán</div>
+          </div>
+        </div>
+      </div>
+
       {/* ======================================================== */}
       {/* 1. THANH CHỌN 5 PHÂN HỆ: NGÀY | TUẦN | THÁNG | NĂM | THỐNG KÊ */}
       {/* ======================================================== */}
@@ -986,13 +864,13 @@ export default function RevenueAnalytics({ orders = [] }) {
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center">
                   <div className="text-[10px] uppercase font-bold text-slate-500">TB Tiền Thu Giờ Vàng</div>
                   <div className="text-base font-black text-amber-700 mt-0.5">
-                    ~1.450.000đ/giờ
+                    {dayStats.peakHourlyAvg > 0 ? `~${dayStats.peakHourlyAvg.toLocaleString()}đ/giờ` : '0đ/giờ'}
                   </div>
                 </div>
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center">
                   <div className="text-[10px] uppercase font-bold text-slate-500">Tỷ Lệ Tiền Mặt : QR</div>
                   <div className="text-base font-black text-blue-700 mt-0.5">
-                    43% : 57%
+                    {dayStats.cashRatioStr}
                   </div>
                 </div>
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center">
@@ -1174,7 +1052,7 @@ export default function RevenueAnalytics({ orders = [] }) {
               <span>📋 Lịch Sử Các Tuần Cũ Để So Sánh Doanh Thu:</span>
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {INITIAL_WEEKS.map((w) => (
+              {computedWeeks.map((w) => (
                 <div
                   key={w.weekId}
                   onClick={() => setSelectedWeekId(w.weekId)}
@@ -1187,16 +1065,16 @@ export default function RevenueAnalytics({ orders = [] }) {
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-black text-xs">{w.weekId}</span>
                     <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                      selectedWeekId === w.weekId ? 'bg-amber-800 text-amber-100' : 'bg-slate-200 text-slate-700'
+                      selectedWeekId === w.weekId ? 'bg-amber-800 text-amber-100' : w.ordersCount > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
                     }`}>
-                      {w.isCurrent ? '⚡ Đang diễn ra' : w.status === 'UPCOMING' ? '⏳ Sắp tới' : '✅'}
+                      {w.ordersCount > 0 ? `⚡ ${w.ordersCount} đơn` : w.isCurrent ? '⚡ Đang diễn ra' : w.status === 'UPCOMING' ? '⏳ Sắp tới' : '0 đơn'}
                     </span>
                   </div>
                   <div className={`text-[11px] truncate ${selectedWeekId === w.weekId ? 'text-amber-100' : 'text-slate-500'}`}>
                     {w.start} ➔ {w.end}
                   </div>
                   <div className="text-sm font-black mt-2">
-                    {w.revenue > 0 ? `${(w.revenue / 1000000).toFixed(1)} Triệu` : '0đ'}
+                    {w.revenue > 0 ? `${(w.revenue / 1000000).toFixed(1)} Triệu` : '0 VNĐ'}
                   </div>
                 </div>
               ))}
@@ -1323,10 +1201,10 @@ export default function RevenueAnalytics({ orders = [] }) {
               <span>📋 Lịch Sử Các Tháng Năm 2026 Để So Sánh Doanh Thu:</span>
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {INITIAL_MONTHS_P_AND_L.map((m) => {
+              {computedMonths.map((m) => {
                 const isSelected = selectedMonth === m.month;
-                const isNov = m.month === CURRENT_MONTH;
-                const isDec = m.month > CURRENT_MONTH;
+                const isNov = m.month === CURRENT_MONTH && selectedYear === CURRENT_YEAR;
+                const isDec = m.month > CURRENT_MONTH && selectedYear === CURRENT_YEAR;
 
                 return (
                   <div
@@ -1341,13 +1219,13 @@ export default function RevenueAnalytics({ orders = [] }) {
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-black text-xs">{m.name}</span>
                       <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                        isSelected ? 'bg-amber-800 text-amber-100' : isNov ? 'bg-amber-100 text-amber-900' : isDec ? 'bg-blue-100 text-blue-900' : 'bg-emerald-100 text-emerald-800'
+                        isSelected ? 'bg-amber-800 text-amber-100' : m.ordersCount > 0 ? 'bg-emerald-100 text-emerald-800' : isNov ? 'bg-amber-100 text-amber-900' : isDec ? 'bg-blue-100 text-blue-900' : 'bg-slate-200 text-slate-600'
                       }`}>
-                        {isNov ? '⚡ Đang diễn ra' : isDec ? '⏳ Sắp tới' : '✅'}
+                        {m.ordersCount > 0 ? `⚡ ${m.ordersCount} đơn` : isNov ? '⚡ Đang diễn ra' : isDec ? '⏳ Sắp tới' : '0 đơn'}
                       </span>
                     </div>
                     <div className="text-sm font-black mt-2">
-                      {isDec ? '0đ' : isNov ? '35.4 Tr (10 ngày)' : `${(m.revenue / 1000000).toFixed(1)} Tr`}
+                      {m.revenue > 0 ? `${(m.revenue / 1000000).toFixed(1)} Tr` : '0 VNĐ'}
                     </div>
                   </div>
                 );
@@ -1491,109 +1369,119 @@ export default function RevenueAnalytics({ orders = [] }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* CỘT TRÁI: BIỂU ĐỒ KHUNG GIỜ VÀNG (7 COLS) */}
-            <div className="lg:col-span-7 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4 pb-2 border-b">
-                  <h3 className="font-black text-sm text-slate-800 flex items-center gap-1.5">
-                    <span>🔥 Biểu Đồ Phân Tích Khung Giờ Vàng (Doanh Thu Theo Giờ)</span>
-                  </h3>
-                  <span className="text-xs text-amber-700 font-bold">Khung Giờ Cao Điểm</span>
+          {statsData.isEmpty ? (
+            <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm space-y-3">
+              <div className="text-5xl">📊☕</div>
+              <h3 className="text-base font-extrabold text-slate-700">Chưa có đơn hàng nào phát sinh để thống kê!</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Khi nhóm của bạn thêm món và thực hiện thanh toán đơn hàng tại Quầy Thu Ngân, hệ thống sẽ tự động vẽ biểu đồ Khung Giờ Vàng và xếp hạng Top món bán chạy nhất tại đây.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* CỘT TRÁI: BIỂU ĐỒ KHUNG GIỜ VÀNG (7 COLS) */}
+              <div className="lg:col-span-7 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b">
+                    <h3 className="font-black text-sm text-slate-800 flex items-center gap-1.5">
+                      <span>🔥 Biểu Đồ Phân Tích Khung Giờ Vàng (Doanh Thu Theo Giờ)</span>
+                    </h3>
+                    <span className="text-xs text-amber-700 font-bold">Khung Giờ Cao Điểm</span>
+                  </div>
+
+                  {/* BIỂU ĐỒ CỘT GIỜ VÀNG */}
+                  <div className="h-64 w-full flex items-end justify-between gap-2 sm:gap-3 pt-8 pb-2 px-1 border-b border-slate-100">
+                    {statsData.hourlyPeak.map((h, i) => {
+                      const heightPercent = Math.max(18, Math.round((h.revenue / statsData.maxHourly) * 100));
+
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                          <div className="opacity-0 group-hover:opacity-100 transition absolute -top-9 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-xl pointer-events-none whitespace-nowrap z-20 shadow-lg">
+                            {h.slot}: {h.revenue.toLocaleString()}đ ({h.orders} đơn - {h.percent}%)
+                          </div>
+
+                          <span className="text-[10px] font-bold text-slate-600 mb-1">
+                            {(h.revenue / 1000000).toFixed(1)}Tr
+                          </span>
+
+                          <div
+                            style={{ height: `${heightPercent}%` }}
+                            className={`w-full max-w-[44px] rounded-t-2xl transition-all ${
+                              h.isPeak
+                                ? 'bg-gradient-to-t from-amber-600 via-amber-500 to-amber-400 shadow-md ring-2 ring-amber-300'
+                                : 'bg-gradient-to-t from-slate-300 to-slate-200 group-hover:from-amber-400 group-hover:to-amber-300'
+                            }`}
+                          ></div>
+
+                          <div className="text-center mt-2.5">
+                            <div className={`text-[11px] font-black ${h.isPeak ? 'text-amber-700 font-extrabold' : 'text-slate-800'}`}>
+                              {h.slot}
+                            </div>
+                            <div className="text-[9px] text-slate-400 truncate max-w-[70px]">{h.label}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* BIỂU ĐỒ CỘT GIỜ VÀNG */}
-                <div className="h-64 w-full flex items-end justify-between gap-2 sm:gap-3 pt-8 pb-2 px-1 border-b border-slate-100">
-                  {statsData.hourlyPeak.map((h, i) => {
-                    const heightPercent = Math.max(18, Math.round((h.revenue / statsData.maxHourly) * 100));
-
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                        <div className="opacity-0 group-hover:opacity-100 transition absolute -top-9 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-xl pointer-events-none whitespace-nowrap z-20 shadow-lg">
-                          {h.slot}: {h.revenue.toLocaleString()}đ ({h.orders} đơn - {h.percent}%)
-                        </div>
-
-                        <span className="text-[10px] font-bold text-slate-600 mb-1">
-                          {(h.revenue / 1000000).toFixed(1)}Tr
-                        </span>
-
-                        <div
-                          style={{ height: `${heightPercent}%` }}
-                          className={`w-full max-w-[44px] rounded-t-2xl transition-all ${
-                            h.isPeak
-                              ? 'bg-gradient-to-t from-amber-600 via-amber-500 to-amber-400 shadow-md ring-2 ring-amber-300'
-                              : 'bg-gradient-to-t from-slate-300 to-slate-200 group-hover:from-amber-400 group-hover:to-amber-300'
-                          }`}
-                        ></div>
-
-                        <div className="text-center mt-2.5">
-                          <div className={`text-[11px] font-black ${h.isPeak ? 'text-amber-700 font-extrabold' : 'text-slate-800'}`}>
-                            {h.slot}
-                          </div>
-                          <div className="text-[9px] text-slate-400 truncate max-w-[70px]">{h.label}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="mt-4 p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1">
+                  <div>⚡ <strong>Khung giờ vàng đông khách nhất:</strong> Dựa trên dữ liệu thanh toán thực tế của quán.</div>
+                  <div>💡 <strong>Khuyến nghị vận hành:</strong> Bố trí Barista pha chế và nhân viên phục vụ trong khung giờ cao điểm để không làm khách chờ lâu.</div>
                 </div>
               </div>
 
-              <div className="mt-4 p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1">
-                <div>⚡ <strong>Khung giờ vàng đông khách nhất:</strong> <strong>09h00 - 11h00 Sáng</strong> (Đóng góp tới <strong>36%</strong> doanh thu cả ngày).</div>
-                <div>💡 <strong>Khuyến nghị vận hành:</strong> Bố trí tối thiểu 2 Barista pha chế và 2 nhân viên phục vụ trong khung giờ 09h - 11h để không làm khách chờ lâu.</div>
+              {/* CỘT PHẢI: TOP MÓN BÁN CHẠY NHẤT (5 COLS) */}
+              <div className="lg:col-span-5 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b">
+                    <h3 className="font-black text-sm text-slate-800 flex items-center gap-1.5">
+                      <span>🏆 Top Món Bán Chạy Nhất Quán</span>
+                    </h3>
+                    <span className="text-xs text-slate-400">Xếp theo số ly bán ra</span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {statsData.topSellingDishes.map((dish) => (
+                      <div
+                        key={dish.rank}
+                        className="p-3 rounded-2xl border border-slate-100 flex items-center justify-between gap-2.5 text-xs hover:bg-slate-50 transition"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <span className={`w-6 h-6 rounded-xl font-black text-xs flex items-center justify-center shrink-0 ${
+                            dish.rank === 1
+                              ? 'bg-amber-500 text-white shadow-sm'
+                              : dish.rank === 2
+                              ? 'bg-slate-300 text-slate-800'
+                              : dish.rank === 3
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            #{dish.rank}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-slate-800 truncate">
+                              {dish.icon} {dish.name}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {dish.qty} ly • Đơn giá: {dish.price.toLocaleString()}đ
+                            </div>
+                          </div>
+                        </div>
+                        <span className="font-black text-amber-700 text-right shrink-0">
+                          {dish.revenue.toLocaleString()}đ
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900">
+                  ⭐ Thống kê được tổng hợp tự động từ danh sách đơn hàng đã bán.
+                </div>
               </div>
             </div>
-
-            {/* CỘT PHẢI: TOP MÓN BÁN CHẠY NHẤT (5 COLS) */}
-            <div className="lg:col-span-5 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3 pb-2 border-b">
-                  <h3 className="font-black text-sm text-slate-800 flex items-center gap-1.5">
-                    <span>🏆 Top Món Bán Chạy Nhất Quán</span>
-                  </h3>
-                  <span className="text-xs text-slate-400">Xếp theo số ly bán ra</span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {statsData.topSellingDishes.map((dish) => (
-                    <div
-                      key={dish.rank}
-                      className="p-3 rounded-2xl border border-slate-100 flex items-center justify-between gap-2.5 text-xs hover:bg-slate-50 transition"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <span className={`w-6 h-6 rounded-xl font-black text-xs flex items-center justify-center shrink-0 ${
-                          dish.rank === 1
-                            ? 'bg-amber-500 text-white shadow-sm'
-                            : dish.rank === 2
-                            ? 'bg-slate-300 text-slate-800'
-                            : dish.rank === 3
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          #{dish.rank}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-bold text-slate-800 truncate">
-                            {dish.icon} {dish.name}
-                          </div>
-                          <div className="text-[10px] text-slate-400">
-                            {dish.qty} ly • Đơn giá: {dish.price.toLocaleString()}đ
-                          </div>
-                        </div>
-                      </div>
-                      <span className="font-black text-amber-700 text-right shrink-0">
-                        {dish.revenue.toLocaleString()}đ
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900">
-                ⭐ <strong>Cà Phê Muối</strong> và <strong>Trà Đào Cam Sả</strong> là hai món chủ lực đem lại doanh thu cao nhất cho quán Tiến Phát.
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>

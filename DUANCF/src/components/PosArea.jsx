@@ -15,7 +15,8 @@ export default function PosArea({
   orders = [],
   inventory = [],
   onCompleteOrder,
-  onDeductInventory
+  onDeductInventory,
+  onSwitchToSelfService
 }) {
   const [selectedTableId, setSelectedTableId] = useState(tables[0]?.id || 'T1');
   const [selectedArea, setSelectedArea] = useState('Tất cả');
@@ -1402,6 +1403,19 @@ export default function PosArea({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* NÚT CHUYỂN SANG MÔ HÌNH TỰ PHỤC VỤ HIGHLANDS */}
+            {onSwitchToSelfService && (
+              <button
+                type="button"
+                onClick={onSwitchToSelfService}
+                className="bg-gradient-to-r from-[#8B181B] to-[#B91C1C] hover:from-[#731316] hover:to-[#991B1B] text-white font-extrabold px-3.5 py-2.5 rounded-xl shadow-md transition text-xs flex items-center gap-1.5 active:scale-95"
+                title="Chuyển sang Quầy Tự Phục Vụ, Thẻ Rung & Barista KDS"
+              >
+                <span>🛎️</span>
+                <span>Mô Hình Tự Phục Vụ Highlands</span>
+              </button>
+            )}
+
             {/* NÚT THÊM BÀN MỚI */}
             <button
               type="button"
