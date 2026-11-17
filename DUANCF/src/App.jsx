@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PosArea from './components/PosArea';
 import HighlandsSelfService from './components/HighlandsSelfService';
 import SaaSRoadmapModal from './components/SaaSRoadmapModal';
+import ShopLogoModal from './components/ShopLogoModal';
 import ShiftManagement from './components/ShiftManagement';
 import Payroll from './components/Payroll';
 import RecipeManagement from './components/RecipeManagement';
@@ -10,6 +11,18 @@ import RevenueAnalytics from './components/RevenueAnalytics';
 import InventoryManagement from './components/InventoryManagement';
 import { INITIAL_TABLES, INITIAL_MENU, INITIAL_STAFF, INITIAL_INVENTORY, DEMO_MENU, DEMO_INVENTORY } from './data/initialData';
 import { NotificationProvider, useNotification } from './components/CustomNotification';
+
+// Thông tin quán và Logo nhận diện thương hiệu mặc định
+const DEFAULT_SHOP_INFO = {
+  name: 'Tiến Phát Café',
+  subTitle: 'Hệ thống POS Thu ngân',
+  logoType: 'text', // 'text' | 'image' | 'preset'
+  logoText: 'CF',
+  logoUrl: '',
+  presetId: 'preset-8',
+  address: 'Tiên Sơn núi vip pro',
+  hotline: '0905.292.193',
+};
 import {
   checkBackendStatus,
   apiGetTables,
@@ -38,6 +51,50 @@ function MainApp() {
 
   // Modal Bản kế hoạch kinh doanh & phát triển thị trường SaaS
   const [showRoadmapModal, setShowRoadmapModal] = useState(false);
+
+  // Modal Cập nhật Logo & Thông tin nhận diện quán
+  const [showShopLogoModal, setShowShopLogoModal] = useState(false);
+  const [shopInfo, setShopInfo] = useState(() => {
+    try {
+      const saved = localStorage.getItem('POS_SHOP_INFO');
+      if (saved) return { ...DEFAULT_SHOP_INFO, ...JSON.parse(saved) };
+    } catch (e) {}
+    return DEFAULT_SHOP_INFO;
+  });
+
+  const handleSaveShopInfo = (newInfo) => {
+    setShopInfo(newInfo);
+    try {
+      localStorage.setItem('POS_SHOP_INFO', JSON.stringify(newInfo));
+    } catch (e) {}
+    showSuccess('🎉 Đã cập nhật Logo và thông tin quán thành công!');
+  };
+
+  const handleResetShopInfo = () => {
+    setShopInfo(DEFAULT_SHOP_INFO);
+    try {
+      localStorage.setItem('POS_SHOP_INFO', JSON.stringify(DEFAULT_SHOP_INFO));
+    } catch (e) {}
+    showSuccess('🔄 Đã khôi phục Logo & thông tin quán về mặc định!');
+  };
+
+  // Dropdown Cài đặt Dữ liệu Demo / Thử nghiệm
+  const [showDevMenu, setShowDevMenu] = useState(false);
+  const devMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (devMenuRef.current && !devMenuRef.current.contains(e.target)) {
+        setShowDevMenu(false);
+      }
+    };
+    if (showDevMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDevMenu]);
 
   const [tables, setTables] = useState(() => {
     const saved = localStorage.getItem('POS_TABLES_DATA');
@@ -529,19 +586,46 @@ function MainApp() {
           <div className="p-4 border-b border-slate-800/80 flex items-center justify-between gap-2 min-h-[72px]">
             {isSidebarOpen ? (
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-10 h-10 rounded-2xl border-2 border-amber-500 overflow-hidden bg-amber-950 flex items-center justify-center font-black text-amber-400 text-sm shadow-md flex-shrink-0">
-                  CF
+                {/* Logo thương hiệu (Click để đổi Logo) */}
+                <div
+                  onClick={() => setShowShopLogoModal(true)}
+                  title="Nhấp để thay đổi Logo & Tên quán"
+                  className="w-10 h-10 rounded-2xl border-2 border-amber-500 overflow-hidden bg-amber-950 flex items-center justify-center font-black text-amber-400 text-sm shadow-md flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-amber-300 hover:scale-105 transition-all group relative"
+                >
+                  {shopInfo.logoType === 'image' && shopInfo.logoUrl ? (
+                    <img src={shopInfo.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{shopInfo.logoText || 'CF'}</span>
+                  )}
+                  <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-bold transition">
+                    ✎
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <h1 className="text-sm font-black text-amber-400 uppercase tracking-wider truncate">
-                    Tiến Phát Café
+                <div
+                  className="min-w-0 cursor-pointer"
+                  onClick={() => setShowShopLogoModal(true)}
+                  title="Nhấp để đổi tên quán & thương hiệu"
+                >
+                  <h1 className="text-sm font-black text-amber-400 uppercase tracking-wider truncate hover:text-amber-300 transition">
+                    {shopInfo.name}
                   </h1>
-                  <p className="text-[10px] text-slate-400 truncate">Hệ thống POS Thu ngân</p>
+                  <p className="text-[10px] text-slate-400 truncate">{shopInfo.subTitle}</p>
                 </div>
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-2xl border-2 border-amber-500 overflow-hidden bg-amber-950 flex items-center justify-center font-black text-amber-400 text-sm shadow-md mx-auto">
-                CF
+              <div
+                onClick={() => setShowShopLogoModal(true)}
+                title="Nhấp để đổi Logo & Tên quán"
+                className="w-10 h-10 rounded-2xl border-2 border-amber-500 overflow-hidden bg-amber-950 flex items-center justify-center font-black text-amber-400 text-sm shadow-md mx-auto cursor-pointer hover:ring-2 hover:ring-amber-300 hover:scale-105 transition-all group relative"
+              >
+                {shopInfo.logoType === 'image' && shopInfo.logoUrl ? (
+                  <img src={shopInfo.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{shopInfo.logoText || 'CF'}</span>
+                )}
+                <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-bold transition">
+                  ✎
+                </span>
               </div>
             )}
 
@@ -621,9 +705,13 @@ function MainApp() {
           </button>
 
           {isSidebarOpen && (
-            <div className="mt-3 px-1 text-[10px] text-slate-500 leading-tight">
-              <div>📍 Tiên Sơn núi vip pro</div>
-              <div className="mt-0.5">📞 Hotline: 0905292193</div>
+            <div
+              className="mt-3 px-1 text-[10px] text-slate-500 leading-tight cursor-pointer hover:text-slate-400 transition"
+              onClick={() => setShowShopLogoModal(true)}
+              title="Nhấp để cập nhật địa chỉ & hotline quán"
+            >
+              <div>📍 {shopInfo.address}</div>
+              <div className="mt-0.5">📞 Hotline: {shopInfo.hotline}</div>
             </div>
           )}
         </div>
@@ -695,38 +783,115 @@ function MainApp() {
               </button>
             </div>
 
-            {/* NÚT LÀM TRỐNG DỮ LIỆU (RESET VỀ 0) */}
-            <button
-              type="button"
-              onClick={handleClearAllData}
-              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 px-2.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition active:scale-95"
-              title="Làm trống toàn bộ thực đơn, kho, đơn hàng và doanh thu về 0đ để bắt đầu thảo luận từ số 0"
-            >
-              <span>🧹</span>
-              <span className="hidden xl:inline">Làm Trống (Về 0)</span>
-            </button>
-
-            {/* NÚT NẠP DỮ LIỆU MẪU (25 MÓN) */}
-            <button
-              type="button"
-              onClick={handleLoadDemoData}
-              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition active:scale-95"
-              title="Nạp lại thực đơn mẫu 25 món khảo sát và 19 nguyên liệu kho chuẩn"
-            >
-              <span>🔄</span>
-              <span className="hidden xl:inline">Nạp Mẫu 25 Món</span>
-            </button>
-
             {/* NÚT MỞ BẢN KẾ HOẠCH PHÁT TRIỂN THỊ TRƯỜNG SAAS */}
             <button
               type="button"
               onClick={() => setShowRoadmapModal(true)}
-              className="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-400/40 px-3 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95"
+              className="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-400/40 px-3 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
               title="Xem Bản Kế Hoạch Thương Mại Hóa & Phát Triển Thị Trường SaaS"
             >
               <span>💼</span>
               <span className="hidden sm:inline">Kế Hoạch Thị Trường</span>
             </button>
+
+            {/* DROPDOWN MENU GOM GỌN CÀI ĐẶT & THỬ NGHIỆM DỮ LIỆU (NẰM BÊN PHẢI GÓC CỦA KẾ HOẠCH THỊ TRƯỜNG) */}
+            <div className="relative" ref={devMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowDevMenu(!showDevMenu)}
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center text-base shadow-2xs transition-all active:scale-95 cursor-pointer ${
+                  showDevMenu
+                    ? 'bg-amber-100 text-amber-900 border-amber-400 ring-2 ring-amber-300 shadow-sm'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                }`}
+                title="Cài đặt & Quản lý dữ liệu thử nghiệm (Nạp mẫu / Làm trống)"
+              >
+                <span className={`inline-block transition-transform duration-300 ${showDevMenu ? 'rotate-90 scale-110' : 'hover:rotate-45'}`}>
+                  ⚙️
+                </span>
+              </button>
+
+              {/* HỘP THOẠI DROPDOWN KHI CLICK VÀO NÚT CÀI ĐẶT */}
+              {showDevMenu && (
+                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-fadeIn space-y-1">
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <div className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <span>⚙️</span>
+                      <span>Quản Lý Cài Đặt & Thử Nghiệm</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      Tùy chỉnh nhận diện thương hiệu & công cụ hỗ trợ thảo luận nhóm
+                    </div>
+                  </div>
+
+                  {/* Lựa chọn 0: Cập nhật Logo & Thông tin quán */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDevMenu(false);
+                      setShowShopLogoModal(true);
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-amber-50 text-slate-700 hover:text-amber-900 transition flex items-start gap-2.5 text-xs group cursor-pointer"
+                  >
+                    <span className="text-base p-1.5 bg-amber-100 text-amber-800 rounded-xl group-hover:scale-110 transition flex-shrink-0">
+                      🖼️
+                    </span>
+                    <div>
+                      <div className="font-extrabold text-slate-800 group-hover:text-amber-900">
+                        Cập Nhật Logo & Tên Quán
+                      </div>
+                      <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                        Tải ảnh logo lên, đổi tên quán, địa chỉ và hotline hiển thị toàn hệ thống
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Lựa chọn 1: Nạp 25 món thực đơn mẫu */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDevMenu(false);
+                      handleLoadDemoData();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 transition flex items-start gap-2.5 text-xs group cursor-pointer"
+                  >
+                    <span className="text-base p-1.5 bg-emerald-100 text-emerald-800 rounded-xl group-hover:scale-110 transition flex-shrink-0">
+                      🔄
+                    </span>
+                    <div>
+                      <div className="font-extrabold text-slate-800 group-hover:text-emerald-900">
+                        Nạp Mẫu 25 Món & Kho
+                      </div>
+                      <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                        Nạp nhanh 25 món đồ uống khảo sát kèm định lượng & 19 nguyên liệu kho chuẩn
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Lựa chọn 2: Làm trống toàn bộ hệ thống */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDevMenu(false);
+                      handleClearAllData();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-rose-50 text-slate-700 hover:text-rose-900 transition flex items-start gap-2.5 text-xs group cursor-pointer"
+                  >
+                    <span className="text-base p-1.5 bg-rose-100 text-rose-800 rounded-xl group-hover:scale-110 transition flex-shrink-0">
+                      🧹
+                    </span>
+                    <div>
+                      <div className="font-extrabold text-slate-800 group-hover:text-rose-900">
+                        Làm Trống Toàn Bộ (Về 0)
+                      </div>
+                      <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                        Xóa trắng thực đơn, kho, đơn hàng và đưa doanh thu về 0đ để bắt đầu từ số 0
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Góc phải Topbar: Trạng thái Supabase, Đồng hồ & Quán Café Info */}
@@ -754,9 +919,17 @@ function MainApp() {
               <span>{currentTime}</span>
             </div>
 
-            <div className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>ca phê Tiến Phát</span>
+            <div
+              onClick={() => setShowShopLogoModal(true)}
+              className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition active:scale-95"
+              title="Nhấp để thay đổi Logo & Tên thương hiệu quán"
+            >
+              {shopInfo.logoType === 'image' && shopInfo.logoUrl ? (
+                <img src={shopInfo.logoUrl} alt="Logo" className="w-4 h-4 rounded-full object-cover border border-amber-400" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              )}
+              <span>{shopInfo.name}</span>
             </div>
           </div>
         </header>
@@ -837,6 +1010,15 @@ function MainApp() {
       <SaaSRoadmapModal
         isOpen={showRoadmapModal}
         onClose={() => setShowRoadmapModal(false)}
+      />
+
+      {/* Modal Cập Nhật Logo & Thông Tin Nhận Diện Quán */}
+      <ShopLogoModal
+        isOpen={showShopLogoModal}
+        onClose={() => setShowShopLogoModal(false)}
+        shopInfo={shopInfo}
+        onSaveShopInfo={handleSaveShopInfo}
+        onResetShopInfo={handleResetShopInfo}
       />
     </div>
   );
